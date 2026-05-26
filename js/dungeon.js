@@ -6,6 +6,7 @@ import { spawnMerchant } from './merchant.js';
 import { isBossFloor, createBoss, findBossPosition } from './bosses.js';
 import { getLuck } from './luck.js';
 import { spawnLegendaryMonsters } from './nemesis.js';
+import { createMonster } from './monsters.js';
 
 function createEmpty(w, h, fill = TILES.VOID) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -125,23 +126,9 @@ export function spawnEntities(dungeon, floor, hero = null, legends = []) {
 
   const pool = shuffle(floorTiles.filter((t) => !(t.x === stairs.x && t.y === stairs.y)));
 
-  const names = ['гоблин', 'скелет', 'слизь', 'крысолюд', 'призрак', 'орк'];
   for (let i = 0; i < monsterCount && pool.length; i++) {
     const pos = pool.pop();
-    const name = names[randInt(0, names.length - 1)];
-    const hp = 8 + floor * 4 + randInt(0, 6);
-    monsters.push({
-      id: `m-${i}-${Date.now()}`,
-      x: pos.x,
-      y: pos.y,
-      name,
-      baseName: name,
-      hp,
-      maxHp: hp,
-      atk: 2 + floor + randInt(0, 2),
-      xp: 5 + floor * 3,
-      alive: true,
-    });
+    monsters.push(createMonster(floor, pos, i));
   }
 
   const occupied = new Set([

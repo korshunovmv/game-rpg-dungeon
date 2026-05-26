@@ -1,4 +1,5 @@
 import { randInt } from './utils.js';
+import { applyRangedTraits } from './monsters.js';
 
 const EPITHETS_BARELY = ['Злопамятный', 'Измученный', 'Озлобленный', 'Кровожадный'];
 const EPITHETS_SLAYER = ['Смертоносный', 'Жуткий', 'Проклятый', 'Непобедимый'];
@@ -78,7 +79,7 @@ export function spawnLegendMonster(legend, pos, floor, index) {
   const hp = Math.floor((10 + floor * 5 + randInt(2, 8)) * mult);
   const atk = Math.floor((3 + floor + randInt(1, 3)) * mult);
 
-  return {
+  return applyRangedTraits({
     id: `leg-${index}-${Date.now()}`,
     x: pos.x,
     y: pos.y,
@@ -93,7 +94,7 @@ export function spawnLegendMonster(legend, pos, floor, index) {
     legendKey: legend.key,
     legendReason: legend.reason,
     color: legend.reason === 'slayer' ? '#ff2244' : '#ff8844',
-  };
+  }, legend.baseName);
 }
 
 export function spawnLegendaryMonsters(dungeon, floor, pool, legends, occupied) {

@@ -16,7 +16,174 @@ export class Renderer {
     this.ctx = canvas.getContext('2d');
     this.ctx.imageSmoothingEnabled = false;
     this.particles = [];
+    this.projectiles = [];
     this.shake = 0;
+  }
+
+  addProjectile(fromX, fromY, toX, toY, options = {}) {
+    if (fromX === toX && fromY === toY) return;
+
+    this.projectiles.push({
+      fromX,
+      fromY,
+      toX,
+      toY,
+      progress: 0,
+      speed: options.speed ?? 0.16,
+      kind: options.kind ?? 'arrow',
+      color: options.color ?? '#cccccc',
+      trail: options.trail ?? null,
+      onComplete: options.onComplete ?? null,
+      done: false,
+    });
+  }
+
+  updateProjectiles() {
+    this.projectiles = this.projectiles.filter((p) => {
+      const prev = p.progress;
+      p.progress += p.speed;
+
+      if (p.trail && prev < 1) {
+        const t = Math.min(1, p.progress);
+        const wx = p.fromX + (p.toX - p.fromX) * t;
+        const wy = p.fromY + (p.toY - p.fromY) * t;
+        this.addParticle(wx, wy, p.trail, 8);
+      }
+
+      if (!p.done && prev < 1 && p.progress >= 1) {
+        p.done = true;
+        if (p.onComplete) p.onComplete();
+      }
+
+      return p.progress < 1.05;
+    });
+  }
+
+  drawArrow(ctx, cx, cy, dx, dy, color = '#d4c4a0') {
+    const ax = Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 1 : -1) : 0;
+    const ay = Math.abs(dy) > Math.abs(dx) ? (dy >= 0 ? 1 : -1) : 0;
+
+    ctx.fillStyle = '#664422';
+    if (ax > 0) {
+      ctx.fillRect(cx - 5, cy + 1, 4, 2);
+      ctx.fillStyle = color;
+      ctx.fillRect(cx - 1, cy, 5, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx + 3, cy + 1, 2, 2);
+    } else if (ax < 0) {
+      ctx.fillRect(cx + 1, cy + 1, 4, 2);
+      ctx.fillStyle = color;
+      ctx.fillRect(cx - 4, cy, 5, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - 4, cy + 1, 2, 2);
+    } else if (ay > 0) {
+      ctx.fillRect(cx + 1, cy - 5, 2, 4);
+      ctx.fillStyle = color;
+      ctx.fillRect(cx, cy - 1, 4, 5);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx + 1, cy + 3, 2, 2);
+    } else if (ay < 0) {
+      ctx.fillRect(cx + 1, cy + 1, 2, 4);
+      ctx.fillStyle = color;
+      ctx.fillRect(cx, cy - 4, 4, 5);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx + 1, cy - 4, 2, 2);
+    }
+  }
+
+  drawOrb(ctx, cx, cy, color, size = 4) {
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+    ctx.fillStyle = '#ffffff88';
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+  }
+
+  drawLightning(ctx, sx, sy, ex, ey, color = '#ffff44') {
+    const steps = 5;
+    let px = sx;
+    let py = sy;
+    ctx.fillStyle = color;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const tx = sx + (ex - sx) * t + (i < steps ? (Math.random() - 0.5) * 4 : 0);
+      const ty = sy + (ey - sy) * t + (i < steps ? (Math.random() - 0.5) * 4 : 0);
+      const dx = tx - px;
+      const dy = ty - py;
+      const seg = Math.max(Math.abs(dx), Math.abs(dy), 1);
+      ctx.fillRect(Math.round(px), Math.round(py), Math.max(2, Math.round(Math.abs(dx) || 2)), Math.max(2, Math.round(Math.abs(dy) || 2)));
+      px = tx;
+      py = ty;
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(Math.round(ex) - 1, Math.round(ey) - 1, 2, 2);
+  }
+
+  drawProjectile(p, camX, camY) {
+    const t = Math.min(1, p.progress);
+    const wx = p.fromX + (p.toX - p.fromX) * t;
+    const wy = p.fromY + (p.toY - p.fromY) * t;
+    const start = this.worldToScreen(p.fromX, p.fromY, camX, camY);
+    const end = this.worldToScreen(wx, wy, camX, camY);
+    const cx = end.sx + TILE / 2;
+    const cy = end.sy + TILE / 2;
+    const sx = start.sx + TILE / 2;
+    const sy = start.sy + TILE / 2;
+    const dx = p.toX - p.fromX;
+    const dy = p.toY - p.fromY;
+    const ctx = this.ctx;
+
+    switch (p.kind) {
+      case 'fireball':
+        this.drawOrb(ctx, cx, cy, p.color ?? '#ff6600', 5);
+        this.drawOrb(ctx, cx - dx * 2, cy - dy * 2, '#cc5500', 3);
+        break;
+      case 'ice':
+        ctx.fillStyle = p.color ?? '#66ccff';
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          ctx.fillRect(cx - 3, cy - 1, 6, 3);
+          ctx.fillRect(cx + 1, cy - 2, 2, 5);
+        } else {
+          ctx.fillRect(cx - 1, cy - 3, 3, 6);
+          ctx.fillRect(cx - 2, cy + 1, 5, 2);
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(cx, cy, 2, 2);
+        break;
+      case 'lightning':
+        this.drawLightning(ctx, sx, sy, cx, cy, p.color ?? '#ffff44');
+        break;
+      case 'arcane':
+        this.drawOrb(ctx, cx, cy, p.color ?? '#bb66ff', 4);
+        ctx.fillStyle = '#dd99ff55';
+        ctx.fillRect(cx - 3, cy - 3, 6, 6);
+        break;
+      case 'deathBolt':
+        ctx.fillStyle = p.color ?? '#88ff66';
+        this.drawArrow(ctx, cx, cy, dx, dy, '#88ff66');
+        ctx.fillStyle = '#224411';
+        ctx.fillRect(cx - 1, cy - 1, 2, 2);
+        break;
+      case 'drain':
+      case 'curse':
+      case 'plague':
+        this.drawOrb(ctx, cx, cy, p.color ?? '#aa44aa', 3);
+        ctx.fillStyle = '#ffffff44';
+        ctx.fillRect(sx, sy, cx - sx || 2, cy - sy || 2);
+        break;
+      case 'bolt':
+        this.drawOrb(ctx, cx, cy, p.color ?? '#8844ff', 3);
+        break;
+      case 'arrow':
+      default:
+        this.drawArrow(ctx, cx, cy, dx, dy, p.color ?? '#d4c4a0');
+        break;
+    }
+  }
+
+  drawProjectiles(camX, camY) {
+    for (const p of this.projectiles) {
+      this.drawProjectile(p, camX, camY);
+    }
   }
 
   addParticle(x, y, color, life = 20) {
@@ -36,6 +203,7 @@ export class Renderer {
   }
 
   updateParticles() {
+    this.updateProjectiles();
     this.particles = this.particles.filter((p) => {
       p.x += p.vx;
       p.y += p.vy;
@@ -270,6 +438,12 @@ export class Renderer {
     ctx.fillRect(sx + 5, sy + 5 + wobble, 2, 2);
     ctx.fillRect(sx + 9, sy + 5 + wobble, 2, 2);
 
+    if (monster.ranged) {
+      ctx.fillStyle = '#ccccaa';
+      ctx.fillRect(sx + 11, sy + 7 + wobble, 3, 2);
+      ctx.fillRect(sx + 12, sy + 6 + wobble, 2, 2);
+    }
+
     const hpPct = monster.hp / monster.maxHp;
     ctx.fillStyle = '#330000';
     ctx.fillRect(sx + 2, sy + 1, 12, 2);
@@ -449,6 +623,7 @@ export class Renderer {
     });
 
     this.drawHero(hero, camX, camY, frame);
+    this.drawProjectiles(camX, camY);
     this.drawMinimap(map, explored, hero, state.stairs, camX, camY, theme, items);
     this.drawFloorLabel(theme, hero.floor ?? 1);
     this.drawParticles();

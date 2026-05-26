@@ -2,6 +2,7 @@ import { randInt, manhattan, key } from './utils.js';
 import { isWalkable } from './dungeon.js';
 import { getProfession } from './classes.js';
 import { getLuck, rollLuck } from './luck.js';
+import { calcMonsterDamage } from './monsters.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -105,10 +106,8 @@ function chooseNecroSpell(hero, monster, monsters, distance) {
 }
 
 function applyCounter(hero, monster, distance) {
-  if (monster.hp <= 0 || distance > 1) return 0;
-  const atk = Math.max(1, (monster.atk ?? 2) - (monster.curseAtkRed ?? 0));
-  const def = getTotalDef(hero) + (hero.magicShield ?? 0);
-  return Math.max(1, atk + randInt(-1, 1) - def);
+  if (monster.hp <= 0) return 0;
+  return calcMonsterDamage(monster, hero, distance);
 }
 
 export function necromancerCombatRound(hero, monster, monsters, distance = 1) {

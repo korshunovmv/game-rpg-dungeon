@@ -1,6 +1,7 @@
 import { randInt } from './utils.js';
-import { getProfession } from './classes.js';
-import { getTotalAtk, getTotalDef } from './items.js';
+import { getProfession, getAttackRange } from './classes.js';
+import { getTotalAtk } from './items.js';
+import { applyMonsterAttack } from './monsters.js';
 import { mageCombatRound } from './magic.js';
 import { necromancerCombatRound } from './necromancy.js';
 import { rollLuck, luckCritBonus } from './luck.js';
@@ -72,20 +73,24 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
   }
 
   const prof = getProfession(hero.profession);
-  let heroDmg = Math.max(1, getTotalAtk(hero) + randInt(-1, 2) - randInt(0, 1));
-  if (prof.magicBonus) {
-    heroDmg += prof.magicBonus + randInt(0, 2);
+  const heroRange = getAttackRange(hero);
+  let heroDmg = 0;
+  let crit = false;
+
+  if (distance <= heroRange) {
+    heroDmg = Math.max(1, getTotalAtk(hero) + randInt(-1, 2) - randInt(0, 1));
+    if (prof.magicBonus) {
+      heroDmg += prof.magicBonus + randInt(0, 2);
+    }
+
+    crit = rollLuck(hero, 0.04 + luckCritBonus(hero));
+    if (crit) heroDmg = Math.floor(heroDmg * 1.5);
+    monster.hp -= heroDmg;
   }
 
-  const crit = rollLuck(hero, 0.04 + luckCritBonus(hero));
-  if (crit) heroDmg = Math.floor(heroDmg * 1.5);
-
-  monster.hp -= heroDmg;
-
   let monsterDmg = 0;
-  if (monster.hp > 0 && distance <= 1) {
-    monsterDmg = Math.max(1, monster.atk + randInt(-1, 1) - getTotalDef(hero));
-    hero.hp -= monsterDmg;
+  if (monster.hp > 0) {
+    monsterDmg = applyMonsterAttack(hero, monster, distance);
   }
 
   return {

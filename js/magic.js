@@ -1,4 +1,5 @@
 import { randInt, manhattan } from './utils.js';
+import { calcMonsterDamage } from './monsters.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -110,9 +111,8 @@ function calcSpellDamage(hero, spell, monster) {
 }
 
 function applyMonsterCounter(hero, monster, distance) {
-  if (monster.hp <= 0 || distance > 1) return 0;
-  const def = getTotalDef(hero) + (hero.magicShield ?? 0);
-  return Math.max(1, monster.atk + randInt(-1, 1) - def);
+  if (monster.hp <= 0) return 0;
+  return calcMonsterDamage(monster, hero, distance);
 }
 
 export function mageCombatRound(hero, monster, monsters, distance = 1) {

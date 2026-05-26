@@ -1,7 +1,7 @@
 import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
-import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget } from './ai.js';
+import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero } from './ai.js';
 import { key } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
@@ -40,6 +40,7 @@ import {
   placeGraveOnFloor,
   describeLegacyGift,
 } from './legacy.js';
+import { monsterSnipeRound } from './monsters.js';
 
 export class Game {
   constructor(renderer, ui) {
@@ -212,9 +213,22 @@ export class Game {
     }
 
     const result = triggerTrap(trap, this.hero, this.map, this.traps);
-    this.renderer.shakeScreen(4);
-    this.renderer.addParticle(this.hero.x, this.hero.y, result.particleColor, 25);
     this.log(result.message, 'trap');
+
+    if (trap.type === 'arrow') {
+      this.renderer.addProjectile(trap.x, trap.y, this.hero.x, this.hero.y, {
+        kind: 'arrow',
+        color: '#cccccc',
+        speed: 0.22,
+        onComplete: () => {
+          this.renderer.shakeScreen(4);
+          this.renderer.addParticle(this.hero.x, this.hero.y, result.particleColor, 25);
+        },
+      });
+    } else {
+      this.renderer.shakeScreen(4);
+      this.renderer.addParticle(this.hero.x, this.hero.y, result.particleColor, 25);
+    }
 
     if (result.teleported) {
       this.currentPath = [];
@@ -359,6 +373,50 @@ export class Game {
     this.ui.log(msg, type);
   }
 
+  getCombatProjectile(result, onComplete) {
+    if (result.healed || result.shielded) return null;
+    if (!result.ranged || result.heroDmg <= 0) return null;
+
+    const spellId = result.spell?.id;
+    if (spellId === 'heal' || spellId === 'shield' || spellId === 'boneArmor') return null;
+
+    const speeds = {
+      fireball: 0.14,
+      ice: 0.17,
+      lightning: 0.32,
+      arcane: 0.13,
+      deathBolt: 0.2,
+      drain: 0.15,
+      curse: 0.16,
+      plague: 0.15,
+    };
+
+    if (spellId) {
+      return {
+        kind: spellId,
+        speed: speeds[spellId] ?? 0.16,
+        color: result.spell.color,
+        trail: spellId === 'fireball' ? '#ff6600' : spellId === 'ice' ? '#66ccff' : null,
+        onComplete,
+      };
+    }
+
+    if (this.hero.profession === 'archer') {
+      return { kind: 'arrow', speed: 0.2, color: '#d4c4a0', onComplete };
+    }
+
+    return { kind: 'bolt', speed: 0.16, color: '#ff4466', onComplete };
+  }
+
+  getMonsterProjectile(monster, onComplete) {
+    return {
+      kind: monster.projectileKind ?? 'arrow',
+      speed: 0.2,
+      color: monster.projectileColor ?? '#cc8888',
+      onComplete,
+    };
+  }
+
   tick() {
     if (this.paused || this.state !== 'playing') return;
 
@@ -411,10 +469,10 @@ export class Game {
       return;
     }
 
-    const attackingMonster = moveMonstersTowardHero(this.map, this.hero, this.monsters);
-    if (attackingMonster) {
+    const attack = moveMonstersTowardHero(this.map, this.hero, this.monsters);
+    if (attack) {
       this.currentPath = [];
-      this.doCombat(attackingMonster, true);
+      this.doCombat(attack.monster, true, attack.distance ?? 1);
       return;
     }
 
@@ -504,19 +562,73 @@ export class Game {
   }
 
   doCombat(monster, monsterInitiated = false, distance = 1) {
-    if (!canAttackTarget(this.map, this.hero.x, this.hero.y, monster.x, monster.y, getAttackRange(this.hero))) {
-      return;
-    }
+    const heroRange = getAttackRange(this.hero);
+    const heroCanAttack = canAttackTarget(
+      this.map,
+      this.hero.x,
+      this.hero.y,
+      monster.x,
+      monster.y,
+      heroRange
+    );
+    const monsterCanAttack = canMonsterAttackHero(this.map, monster, this.hero);
 
-    const result = combatRound(this.hero, monster, distance, this.monsters);
+    if (!heroCanAttack && !monsterCanAttack) return;
+    if (!monsterInitiated && !heroCanAttack) return;
+
+    const result = heroCanAttack
+      ? combatRound(this.hero, monster, distance, this.monsters)
+      : monsterSnipeRound(this.hero, monster, distance);
+
     this.lastCombatMonster = monster;
     trackCombatRound(monster, this.hero, result.monsterDmg ?? 0);
     const spellColor = result.spell?.color ?? '#ff4466';
-    this.renderer.shakeScreen(result.spell?.id === 'arcane' ? 5 : 3);
-    this.renderer.addParticle(monster.x, monster.y, spellColor, 25);
+    const impactFx = () => {
+      this.renderer.shakeScreen(result.spell?.id === 'arcane' ? 5 : 3);
+      this.renderer.addParticle(monster.x, monster.y, spellColor, 25);
+    };
+    const projectileOpts = this.getCombatProjectile(result, impactFx);
+    if (projectileOpts) {
+      this.renderer.addProjectile(
+        this.hero.x,
+        this.hero.y,
+        monster.x,
+        monster.y,
+        projectileOpts
+      );
+    } else if (result.heroDmg > 0) {
+      impactFx();
+    }
+
+    const heroImpactFx = () => {
+      if (result.monsterDmg > 0) {
+        this.renderer.shakeScreen(2);
+        this.renderer.addParticle(
+          this.hero.x,
+          this.hero.y,
+          monster.projectileColor ?? '#ff4466',
+          20
+        );
+      }
+    };
+    if (result.monsterDmg > 0 && distance > 1 && monster.ranged) {
+      this.renderer.addProjectile(
+        monster.x,
+        monster.y,
+        this.hero.x,
+        this.hero.y,
+        this.getMonsterProjectile(monster, heroImpactFx)
+      );
+    } else if (result.monsterDmg > 0) {
+      heroImpactFx();
+    }
 
     if (monsterInitiated) {
-      this.log(`${monster.name} нападает!`, 'combat');
+      if (distance > 1 && monster.ranged) {
+        this.log(`${monster.name} стреляет!`, 'combat');
+      } else {
+        this.log(`${monster.name} нападает!`, 'combat');
+      }
     }
 
     if (result.healed) {
@@ -526,7 +638,7 @@ export class Game {
       if (result.heroDmg > 0) {
         this.log(`Контрудар по ${monster.name}: −${result.heroDmg} HP`, 'combat');
       }
-    } else {
+    } else if (result.heroDmg > 0) {
       const rangeNote = result.ranged ? ' (дист.)' : '';
       const critNote = result.crit ? ' Крит!' : '';
       this.log(`${result.attackLabel}${rangeNote} по ${monster.name}: −${result.heroDmg} HP${critNote}`, 'combat');
@@ -555,7 +667,8 @@ export class Game {
       monster.alive = false;
       this.onMonsterSlain(monster);
     } else if (result.monsterDmg > 0) {
-      this.log(`${monster.name} бьёт: −${result.monsterDmg} HP`, 'combat');
+      const shotNote = distance > 1 && monster.ranged ? ' (дист.)' : '';
+      this.log(`${monster.name} бьёт${shotNote}: −${result.monsterDmg} HP`, 'combat');
     }
 
     if (this.hero.hp <= 0) {

@@ -3,6 +3,7 @@ import { TILES } from './config.js';
 import { isWalkable } from './dungeon.js';
 import { key, manhattan } from './utils.js';
 import { getAttackRange, getItemSearchRange, canDisarmTraps } from './classes.js';
+import { getMonsterAttackRange } from './monsters.js';
 import { getDisarmableTrap } from './traps.js';
 import { isHealingItem, itemPriority } from './items.js';
 import { hasWorthwhilePurchase, merchantHasStock } from './merchant.js';
@@ -364,6 +365,17 @@ export function canMonsterSeeHero(monster, hero) {
   return manhattan(monster.x, monster.y, hero.x, hero.y) <= MONSTER_VISION;
 }
 
+export function canMonsterAttackHero(map, monster, hero) {
+  return canAttackTarget(
+    map,
+    monster.x,
+    monster.y,
+    hero.x,
+    hero.y,
+    getMonsterAttackRange(monster)
+  );
+}
+
 export function moveMonstersTowardHero(map, hero, monsters) {
   const hunters = monsters
     .filter((m) => m.alive && canMonsterSeeHero(m, hero))
@@ -380,8 +392,14 @@ export function moveMonstersTowardHero(map, hero, monsters) {
     }
 
     const dist = manhattan(monster.x, monster.y, hero.x, hero.y);
-    if (dist <= 1) {
-      return monster;
+
+    if (canMonsterAttackHero(map, monster, hero)) {
+      if (monster.ranged && dist > 1) {
+        return { monster, distance: dist };
+      }
+      if (dist <= 1) {
+        return { monster, distance: dist };
+      }
     }
 
     const blocked = new Set(occupied);
@@ -392,7 +410,7 @@ export function moveMonstersTowardHero(map, hero, monsters) {
 
     const next = path[0];
     if (next.x === hero.x && next.y === hero.y) {
-      return monster;
+      return { monster, distance: 1 };
     }
 
     const nextKey = key(next.x, next.y);
@@ -403,8 +421,14 @@ export function moveMonstersTowardHero(map, hero, monsters) {
     monster.y = next.y;
     occupied.add(nextKey);
 
-    if (manhattan(monster.x, monster.y, hero.x, hero.y) <= 1) {
-      return monster;
+    const newDist = manhattan(monster.x, monster.y, hero.x, hero.y);
+    if (canMonsterAttackHero(map, monster, hero)) {
+      if (monster.ranged && newDist > 1) {
+        return { monster, distance: newDist };
+      }
+      if (newDist <= 1) {
+        return { monster, distance: newDist };
+      }
     }
   }
 
