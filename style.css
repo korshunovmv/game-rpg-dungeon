@@ -358,6 +358,7 @@ body {
 #log li.boss { color: #ff66ff; }
 #log li.nemesis { color: #ff8866; }
 #log li.legacy { color: #ccaa66; }
+#log li.chest { color: #ffcc66; }
 #log li.death { color: #ff0044; }
 
 .controls {

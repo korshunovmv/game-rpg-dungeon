@@ -8,6 +8,7 @@ import { getDisarmableTrap } from './traps.js';
 import { isHealingItem, itemPriority } from './items.js';
 import { hasWorthwhilePurchase, merchantHasStock } from './merchant.js';
 import { getAliveBoss } from './bosses.js';
+import { chestPriority, isUnopenedChest } from './chests.js';
 
 const DIRS = [
   [0, -1], [1, 0], [0, 1], [-1, 0],
@@ -142,6 +143,32 @@ function getUncollectedItemsInRoom(room, items) {
   );
 }
 
+function getUnopenedChestsInRoom(room, chests) {
+  return chests.filter(
+    (c) => isUnopenedChest(c)
+      && c.x >= room.x && c.x < room.x + room.w
+      && c.y >= room.y && c.y < room.y + room.h
+  );
+}
+
+function findNearestChestPath(map, hx, hy, chestList, blocked, hero) {
+  const sorted = chestList
+    .map((chest) => ({
+      chest,
+      dist: manhattan(hx, hy, chest.x, chest.y),
+      score: chestPriority(chest, hero),
+    }))
+    .sort((a, b) => b.score - a.score || a.dist - b.dist);
+
+  for (const { chest } of sorted) {
+    const path = findPath(map, hx, hy, chest.x, chest.y, blocked);
+    if (path?.length || (chest.x === hx && chest.y === hy)) {
+      return { path: path ?? [], goal: chest };
+    }
+  }
+  return null;
+}
+
 function findNearestItemPath(map, hx, hy, itemList, blocked, hero = null, needHeal = false) {
   const sorted = itemList
     .map((item) => ({
@@ -180,7 +207,7 @@ function findHealerPath(map, hx, hy, healers, blocked) {
   return null;
 }
 
-export function getExplorationTarget(map, hero, explored, monsters, items, rooms = [], traps = [], healers = [], merchant = null) {
+export function getExplorationTarget(map, hero, explored, monsters, items, rooms = [], traps = [], healers = [], merchant = null, chests = []) {
   const { x: hx, y: hy } = hero;
   const attackRange = getAttackRange(hero);
   const itemRange = getItemSearchRange(hero);
@@ -235,6 +262,11 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
     return { type: 'heal', target: onHealer };
   }
 
+  const onChest = chests.find((c) => isUnopenedChest(c) && c.x === hx && c.y === hy);
+  if (onChest) {
+    return { type: 'chest', target: onChest };
+  }
+
   const onItem = items.find((i) => !i.collected && i.x === hx && i.y === hy);
   if (onItem) {
     if (!needHeal || isHealingItem(onItem) || onItem.type === 'gold') {
@@ -268,8 +300,30 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
     }
   }
 
+  const unopenedChests = chests.filter((c) => isUnopenedChest(c));
+  const nearChest = unopenedChests
+    .map((c) => ({ chest: c, dist: manhattan(hx, hy, c.x, c.y), score: chestPriority(c, hero) }))
+    .filter((e) => e.dist <= itemRange)
+    .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];
+
+  if (nearChest) {
+    if (nearChest.dist === 0) {
+      return { type: 'chest', target: nearChest.chest };
+    }
+    const path = findPath(map, hx, hy, nearChest.chest.x, nearChest.chest.y, blocked);
+    if (path?.length) {
+      return { type: 'chest-move', path, goal: nearChest.chest };
+    }
+  }
+
   const currentRoom = getRoomAt(rooms, hx, hy);
   if (currentRoom) {
+    const roomChests = getUnopenedChestsInRoom(currentRoom, chests);
+    const roomChest = findNearestChestPath(map, hx, hy, roomChests, blocked, hero);
+    if (roomChest) {
+      return { type: 'chest-move', path: roomChest.path, goal: roomChest.goal };
+    }
+
     const roomItems = getUncollectedItemsInRoom(currentRoom, items);
     const roomLoot = findNearestItemPath(map, hx, hy, roomItems, blocked, hero, needHeal);
     if (roomLoot) {

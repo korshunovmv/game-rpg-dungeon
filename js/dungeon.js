@@ -7,6 +7,7 @@ import { isBossFloor, createBoss, findBossPosition } from './bosses.js';
 import { getLuck } from './luck.js';
 import { spawnLegendaryMonsters } from './nemesis.js';
 import { createMonster } from './monsters.js';
+import { spawnChests } from './chests.js';
 
 function createEmpty(w, h, fill = TILES.VOID) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -162,6 +163,7 @@ export function spawnEntities(dungeon, floor, hero = null, legends = []) {
   const healers = spawnHealers(dungeon, floor, occupied);
   if (healers.length) healers.forEach((h) => occupied.add(`${h.x},${h.y}`));
   const merchant = spawnMerchant(dungeon, floor, occupied, luck);
+  const chests = spawnChests(dungeon, floor, occupied, luck);
 
-  return { monsters, items, traps, healers, merchant, legendSpawns };
+  return { monsters, items, traps, healers, merchant, chests, legendSpawns };
 }

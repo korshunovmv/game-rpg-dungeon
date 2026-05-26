@@ -41,6 +41,7 @@ import {
   describeLegacyGift,
 } from './legacy.js';
 import { monsterSnipeRound } from './monsters.js';
+import { openChestLoot, describeChestLoot } from './chests.js';
 
 export class Game {
   constructor(renderer, ui) {
@@ -57,6 +58,7 @@ export class Game {
     this.hero = null;
     this.monsters = [];
     this.items = [];
+    this.chests = [];
     this.traps = [];
     this.healers = [];
     this.merchant = null;
@@ -101,6 +103,7 @@ export class Game {
     const entities = spawnEntities(dungeon, floor, this.hero, this.legendaryFoes);
     this.monsters = entities.monsters;
     this.items = entities.items;
+    this.chests = entities.chests ?? [];
     this.traps = entities.traps;
     this.healers = entities.healers;
     this.merchant = entities.merchant ?? null;
@@ -181,6 +184,7 @@ export class Game {
     this.hero.y = ny;
     this.checkTrap();
     this.checkHealer();
+    this.checkChest();
     this.checkMerchant();
 
     if (this.hero.hp <= 0) return;
@@ -255,6 +259,72 @@ export class Game {
     this.renderer.addParticle(this.hero.x, this.hero.y, '#44ffff', 30);
     const cured = result.curedPoison ? ', яд снят' : '';
     this.log(`Лечебный алтарь: +${result.healed} HP${cured}`, 'info');
+    this.syncStats();
+  }
+
+  checkChest() {
+    const chest = this.chests.find(
+      (c) => !c.opened && c.x === this.hero.x && c.y === this.hero.y
+    );
+    if (chest) {
+      this.doOpenChest(chest);
+    }
+  }
+
+  logLootResult(result, x, y) {
+    if (!result) return;
+
+    if (result.type === 'gold') {
+      let bonusText = '';
+      if (result.bonus) bonusText += ` (+${result.bonus} бонус)`;
+      if (result.luckBonus) bonusText += ` (+${result.luckBonus} удача)`;
+      if (result.skillBonus) bonusText += ` (+${result.skillBonus} навык)`;
+      this.log(`+${result.value} золота${bonusText}`, 'loot');
+      this.renderer.addParticle(x, y, '#ffd700', 25);
+    } else if (result.type === 'heal') {
+      const cureText = result.cured ? ', яд снят' : '';
+      this.log(`${result.name}: +${result.value} HP${cureText}`, 'loot');
+      this.renderer.addParticle(x, y, '#44ff88', 25);
+    } else if (result.type === 'weapon') {
+      if (result.equipped) {
+        this.log(`Экипировано: ${result.name} (+${result.atk} ATK)`, 'loot');
+      } else {
+        this.log(`${result.name} продан (слабее текущего)`, 'loot');
+      }
+      this.renderer.addParticle(x, y, '#cccccc', 20);
+    } else if (result.type === 'armor') {
+      if (result.equipped) {
+        this.log(`Экипировано: ${result.name} (+${result.def} DEF)`, 'loot');
+      } else {
+        this.log(`${result.name} продан`, 'loot');
+      }
+      this.renderer.addParticle(x, y, '#888899', 20);
+    }
+  }
+
+  doOpenChest(chest) {
+    if (!chest || chest.opened) return;
+
+    chest.opened = true;
+
+    if (chest.isMimic) {
+      const monster = chest.monster;
+      monster.x = chest.x;
+      monster.y = chest.y;
+      monster.alive = true;
+      this.monsters.push(monster);
+      this.log('Сундук оживает — это мимик!', 'chest');
+      this.renderer.shakeScreen(8);
+      this.renderer.addParticle(chest.x, chest.y, '#cc6644', 40);
+      this.doCombat(monster, true, 1);
+      return;
+    }
+
+    const preview = describeChestLoot(chest.loot);
+    const result = openChestLoot(this.hero, chest);
+    this.log(`Сундук: ${preview}`, 'chest');
+    this.logLootResult(result, chest.x, chest.y);
+    this.renderer.addParticle(chest.x, chest.y, '#ffd700', 30);
     this.syncStats();
   }
 
@@ -485,7 +555,8 @@ export class Game {
       this.rooms,
       this.traps,
       this.healers,
-      this.merchant
+      this.merchant,
+      this.chests
     );
 
     if (action.type === 'fight') {
@@ -513,6 +584,11 @@ export class Game {
       return;
     }
 
+    if (action.type === 'chest') {
+      this.doOpenChest(action.target);
+      return;
+    }
+
     if (action.type === 'room-loot') {
       if (action.path?.length) {
         this.currentPath = [...action.path];
@@ -526,6 +602,10 @@ export class Game {
         this.currentPath = [...action.path];
       }
     } else if (action.type === 'merchant-move') {
+      if (action.path?.length) {
+        this.currentPath = [...action.path];
+      }
+    } else if (action.type === 'chest-move') {
       if (action.path?.length) {
         this.currentPath = [...action.path];
       }
@@ -714,6 +794,9 @@ export class Game {
       this.log(`${monster.name} повержен! Лестница открыта! +${monster.goldReward} золота`, 'boss');
       this.renderer.shakeScreen(10);
       this.renderer.addParticle(monster.x, monster.y, monster.color ?? '#ffd700', 45);
+    } else if (monster.isMimic) {
+      this.log(`${monster.name} повержен! +${monster.xp} XP`, 'combat');
+      this.renderer.addParticle(monster.x, monster.y, '#cc6644', 35);
     } else if (monster.isLegendary) {
       this.log(`${monster.name} повержен! +${monster.xp} XP`, 'nemesis');
       this.renderer.addParticle(monster.x, monster.y, monster.color ?? '#ff8844', 35);
@@ -730,33 +813,8 @@ export class Game {
   doLoot(item) {
     const result = collectItem(this.hero, item);
     if (!result) return;
-
-    if (result.type === 'gold') {
-      let bonusText = '';
-      if (result.bonus) bonusText += ` (+${result.bonus} бонус)`;
-      if (result.luckBonus) bonusText += ` (+${result.luckBonus} удача)`;
-      if (result.skillBonus) bonusText += ` (+${result.skillBonus} навык)`;
-      this.log(`+${result.value} золота${bonusText}`, 'loot');
-      this.renderer.addParticle(item.x, item.y, '#ffd700', 25);
-    } else if (result.type === 'heal') {
-      const cureText = result.cured ? ', яд снят' : '';
-      this.log(`${result.name}: +${result.value} HP${cureText}`, 'loot');
-      this.renderer.addParticle(item.x, item.y, '#44ff88', 25);
-    } else if (result.type === 'weapon') {
-      if (result.equipped) {
-        this.log(`Экипировано: ${result.name} (+${result.atk} ATK)`, 'loot');
-      } else {
-        this.log(`${result.name} продан (слабее текущего)`, 'loot');
-      }
-      this.renderer.addParticle(item.x, item.y, '#cccccc', 20);
-    } else if (result.type === 'armor') {
-      if (result.equipped) {
-        this.log(`Экипировано: ${result.name} (+${result.def} DEF)`, 'loot');
-      } else {
-        this.log(`${result.name} продан`, 'loot');
-      }
-      this.renderer.addParticle(item.x, item.y, '#888899', 20);
-    } else if (result.type === 'legacy_weapon') {
+    this.logLootResult(result, item.x, item.y);
+    if (result.type === 'legacy_weapon') {
       this.log(`Наследие ${result.heroName}: ${result.name} (+${result.atk} ATK)`, 'legacy');
       this.renderer.addParticle(item.x, item.y, '#ffcc88', 35);
     } else if (result.type === 'legacy_armor') {
@@ -826,6 +884,7 @@ export class Game {
       hero: this.hero,
       monsters: this.monsters,
       items: this.items,
+      chests: this.chests,
       traps: this.traps,
       healers: this.healers,
       merchant: this.merchant,
@@ -854,6 +913,7 @@ export class Game {
     this.hero = null;
     this.monsters = [];
     this.items = [];
+    this.chests = [];
     this.traps = [];
     this.healers = [];
     this.merchant = null;

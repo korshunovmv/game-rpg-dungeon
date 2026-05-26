@@ -307,6 +307,33 @@ export class Renderer {
     }
   }
 
+  drawChest(chest, camX, camY, frame) {
+    if (chest.isMimic && chest.opened) return;
+
+    const { sx, sy } = this.worldToScreen(chest.x, chest.y, camX, camY);
+    const ctx = this.ctx;
+    const pulse = Math.sin(frame / 8 + chest.x) * 0.5;
+
+    if (chest.opened) {
+      ctx.fillStyle = '#553311';
+      ctx.fillRect(sx + 3, sy + 10, 10, 5);
+      ctx.fillRect(sx + 2, sy + 8, 12, 3);
+      ctx.fillStyle = '#443322';
+      ctx.fillRect(sx + 3, sy + 5, 10, 4);
+      return;
+    }
+
+    ctx.fillStyle = '#553311';
+    ctx.fillRect(sx + 3, sy + 10, 10, 5);
+    ctx.fillStyle = '#775533';
+    ctx.fillRect(sx + 2, sy + 8, 12, 4);
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(sx + 4, sy + 6 + pulse, 8, 2);
+    ctx.fillRect(sx + 7, sy + 9, 2, 3);
+    ctx.fillStyle = '#ffee88';
+    ctx.fillRect(sx + 5, sy + 7 + pulse, 4, 2);
+  }
+
   drawHealer(healer, camX, camY, frame) {
     if (healer.used) return;
     const { sx, sy } = this.worldToScreen(healer.x, healer.y, camX, camY);
@@ -421,6 +448,10 @@ export class Renderer {
       this.drawBoss(monster, camX, camY, frame);
       return;
     }
+    if (monster.isMimic) {
+      this.drawMimic(monster, camX, camY, frame);
+      return;
+    }
     const { sx, sy } = this.worldToScreen(monster.x, monster.y, camX, camY);
     const ctx = this.ctx;
     const wobble = Math.sin(frame / 5 + monster.x) * 0.5;
@@ -448,6 +479,35 @@ export class Renderer {
     ctx.fillStyle = '#330000';
     ctx.fillRect(sx + 2, sy + 1, 12, 2);
     ctx.fillStyle = '#ff0044';
+    ctx.fillRect(sx + 2, sy + 1, 12 * hpPct, 2);
+  }
+
+  drawMimic(monster, camX, camY, frame) {
+    const { sx, sy } = this.worldToScreen(monster.x, monster.y, camX, camY);
+    const ctx = this.ctx;
+    const pulse = Math.sin(frame / 4 + monster.x) * 0.8;
+
+    ctx.fillStyle = '#553311';
+    ctx.fillRect(sx + 2, sy + 8 + pulse, 12, 6);
+    ctx.fillStyle = '#775533';
+    ctx.fillRect(sx + 3, sy + 6 + pulse, 10, 4);
+    ctx.fillStyle = '#cc6644';
+    ctx.fillRect(sx + 4, sy + 4 + pulse, 8, 8);
+    ctx.fillStyle = '#ff8866';
+    ctx.fillRect(sx + 5, sy + 7 + pulse, 6, 3);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sx + 5, sy + 5 + pulse, 2, 2);
+    ctx.fillRect(sx + 9, sy + 5 + pulse, 2, 2);
+    ctx.fillStyle = '#220000';
+    ctx.fillRect(sx + 5, sy + 6 + pulse, 2, 1);
+    ctx.fillRect(sx + 9, sy + 6 + pulse, 2, 1);
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(sx + 6, sy + 9 + pulse, 4, 1);
+
+    const hpPct = monster.hp / monster.maxHp;
+    ctx.fillStyle = '#330000';
+    ctx.fillRect(sx + 2, sy + 1, 12, 2);
+    ctx.fillStyle = '#ff6644';
     ctx.fillRect(sx + 2, sy + 1, 12 * hpPct, 2);
   }
 
@@ -570,7 +630,7 @@ export class Renderer {
   }
 
   render(state) {
-    const { map, hero, monsters, items, traps = [], healers = [], merchant = null, minions = [], explored, visible, frame } = state;
+    const { map, hero, monsters, items, chests = [], traps = [], healers = [], merchant = null, minions = [], explored, visible, frame } = state;
     const ctx = this.ctx;
 
     ctx.fillStyle = '#000';
@@ -589,6 +649,12 @@ export class Renderer {
     items.forEach((item) => {
       if (explored.has(key(item.x, item.y)) && visible.has(key(item.x, item.y))) {
         this.drawItem(item, camX, camY);
+      }
+    });
+
+    chests.forEach((chest) => {
+      if (explored.has(key(chest.x, chest.y)) && visible.has(key(chest.x, chest.y))) {
+        this.drawChest(chest, camX, camY, frame);
       }
     });
 
