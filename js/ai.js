@@ -226,7 +226,19 @@ function findHealerPath(map, hx, hy, healers, blocked) {
   return null;
 }
 
-export function getExplorationTarget(map, hero, explored, monsters, items, rooms = [], traps = [], healers = [], merchant = null, chests = []) {
+export function getExplorationTarget(
+  map,
+  hero,
+  explored,
+  monsters,
+  items,
+  rooms = [],
+  traps = [],
+  healers = [],
+  merchant = null,
+  chests = [],
+  focusMonster = null
+) {
   const { x: hx, y: hy } = hero;
   const attackRange = getAttackRange(hero);
   const itemRange = getItemSearchRange(hero);
@@ -254,6 +266,21 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
       target: targetMonster.monster,
       distance: targetMonster.dist,
     };
+  }
+
+  if (focusMonster?.alive) {
+    if (canAttackTarget(map, hx, hy, focusMonster.x, focusMonster.y, attackRange)) {
+      return {
+        type: 'fight',
+        target: focusMonster,
+        distance: getHeroFightDistance(hero, focusMonster),
+      };
+    }
+
+    const focusPath = findPath(map, hx, hy, focusMonster.x, focusMonster.y, blocked);
+    if (focusPath?.length) {
+      return { type: 'chase', path: focusPath, goal: focusMonster };
+    }
   }
 
   if (canDisarmTraps(hero)) {

@@ -67,6 +67,7 @@ export class Game {
     this.pendingLegacies = [];
     this.floorSeeds = {};
     this.lastCombatMonster = null;
+    this.combatFocus = null;
   }
 
   start(professionId) {
@@ -142,6 +143,7 @@ export class Game {
     this.explored = new Set();
     this.visible = new Set();
     this.currentPath = [];
+    this.combatFocus = null;
     this.accumulator = 0;
     this.state = 'playing';
     this.revealAroundHero();
@@ -541,9 +543,28 @@ export class Game {
 
     const attack = moveMonstersTowardHero(this.map, this.hero, this.monsters);
     if (attack) {
-      this.currentPath = [];
+      const meleeEngaged = isMeleeAdjacent(
+        attack.monster.x,
+        attack.monster.y,
+        this.hero.x,
+        this.hero.y
+      );
+      if (meleeEngaged) {
+        this.currentPath = [];
+      }
       this.doCombat(attack.monster, true, attack.distance ?? 1);
-      return;
+      if (this.hero.hp <= 0 || this.state !== 'playing') {
+        return;
+      }
+      if (meleeEngaged) {
+        return;
+      }
+      this.combatFocus = attack.monster;
+      this.currentPath = [];
+    }
+
+    if (this.combatFocus && !this.combatFocus.alive) {
+      this.combatFocus = null;
     }
 
     const action = getExplorationTarget(
@@ -556,7 +577,8 @@ export class Game {
       this.traps,
       this.healers,
       this.merchant,
-      this.chests
+      this.chests,
+      this.combatFocus
     );
 
     if (action.type === 'fight') {
@@ -606,6 +628,10 @@ export class Game {
         this.currentPath = [...action.path];
       }
     } else if (action.type === 'chest-move') {
+      if (action.path?.length) {
+        this.currentPath = [...action.path];
+      }
+    } else if (action.type === 'chase') {
       if (action.path?.length) {
         this.currentPath = [...action.path];
       }
@@ -751,12 +777,18 @@ export class Game {
       this.log(`  ↳ ${hit.name}: −${hit.damage} HP`, 'combat');
       if (hit.dead) {
         hit.monster.alive = false;
+        if (this.combatFocus === hit.monster) {
+          this.combatFocus = null;
+        }
         this.onMonsterSlain(hit.monster);
       }
     }
 
     if (result.monsterDead) {
       monster.alive = false;
+      if (this.combatFocus === monster) {
+        this.combatFocus = null;
+      }
       this.onMonsterSlain(monster);
     } else if (result.monsterDmg > 0) {
       const shotNote = monsterShotDist > 1 && monster.ranged
