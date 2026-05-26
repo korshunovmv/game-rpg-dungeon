@@ -1,6 +1,7 @@
 import { randInt, manhattan, key } from './utils.js';
 import { isWalkable } from './dungeon.js';
 import { getProfession } from './classes.js';
+import { getLuck, rollLuck } from './luck.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -202,7 +203,8 @@ export function tickMonsterCurses(monsters) {
 export function tryRaiseSkeleton(hero, monster, minions, map, monsters) {
   if (hero.profession !== 'necromancer') return null;
   if (countAliveMinions(minions) >= getMaxMinions(hero)) return null;
-  if (Math.random() > 0.65) return null;
+  const raiseChance = Math.min(0.9, 0.65 + getLuck(hero) * 0.012 + (hero.bonusNecro ?? 0));
+  if (Math.random() > raiseChance) return null;
 
   const occupied = new Set([
     key(hero.x, hero.y),

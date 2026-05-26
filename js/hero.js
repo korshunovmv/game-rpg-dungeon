@@ -3,11 +3,14 @@ import { getProfession } from './classes.js';
 import { getTotalAtk, getTotalDef } from './items.js';
 import { mageCombatRound } from './magic.js';
 import { necromancerCombatRound } from './necromancy.js';
+import { rollLuck, luckCritBonus } from './luck.js';
+import { generateHeroName } from './names.js';
+import { initHeroSkills } from './skills.js';
 
 export function createHero(spawn, professionId = 'warrior') {
   const prof = getProfession(professionId);
-  return {
-    name: 'Арион',
+  const hero = {
+    name: generateHeroName(),
     profession: professionId,
     professionName: prof.name,
     color: prof.color,
@@ -31,7 +34,10 @@ export function createHero(spawn, professionId = 'warrior') {
     alive: true,
     facing: 'down',
     animFrame: 0,
+    skills: {},
   };
+  initHeroSkills(hero);
+  return hero;
 }
 
 export function levelUp(hero) {
@@ -71,6 +77,9 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
     heroDmg += prof.magicBonus + randInt(0, 2);
   }
 
+  const crit = rollLuck(hero, 0.04 + luckCritBonus(hero));
+  if (crit) heroDmg = Math.floor(heroDmg * 1.5);
+
   monster.hp -= heroDmg;
 
   let monsterDmg = 0;
@@ -86,6 +95,7 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
     heroDead: hero.hp <= 0,
     attackLabel: prof.attackLabel,
     ranged: distance > 1,
+    crit,
   };
 }
 

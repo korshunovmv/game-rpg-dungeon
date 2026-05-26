@@ -1,5 +1,6 @@
 import { randInt, shuffle } from './utils.js';
 import { getProfession } from './classes.js';
+import { applyLuckLootWeights, luckGoldBonus } from './luck.js';
 
 export const POTIONS = {
   potion_small: { id: 'potion_small', name: 'Малое зелье', heal: 15, color: '#66cc66' },
@@ -33,10 +34,11 @@ const LOOT_TABLE = [
   { type: 'armor', weight: 16 },
 ];
 
-function pickLootType() {
-  const total = LOOT_TABLE.reduce((s, e) => s + e.weight, 0);
+function pickLootType(luck = 5) {
+  const table = applyLuckLootWeights(LOOT_TABLE, luck);
+  const total = table.reduce((s, e) => s + e.weight, 0);
   let roll = Math.random() * total;
-  for (const entry of LOOT_TABLE) {
+  for (const entry of table) {
     roll -= entry.weight;
     if (roll <= 0) return entry.type;
   }
@@ -61,8 +63,8 @@ function scaleArmor(floor) {
   return a;
 }
 
-export function createLootItem(pos, floor, index) {
-  const kind = pickLootType();
+export function createLootItem(pos, floor, index, luck = 5) {
+  const kind = pickLootType(luck);
 
   if (kind === 'gold') {
     return {
@@ -70,7 +72,7 @@ export function createLootItem(pos, floor, index) {
       x: pos.x,
       y: pos.y,
       type: 'gold',
-      value: randInt(3, 8) + floor * 2,
+      value: randInt(3, 8) + floor * 2 + Math.floor(luck * 0.4),
       collected: false,
     };
   }
@@ -145,17 +147,23 @@ export function spawnHealers(dungeon, floor, occupied = new Set()) {
 }
 
 export function getTotalAtk(hero) {
-  return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
+  return (
+    hero.atk
+    + (hero.weapon?.atk ?? 0)
+    + (hero.armor?.atk ?? 0)
+    + (hero.bonusAtk ?? 0)
+    + (hero.bonusMagic ?? 0)
+  );
 }
 
 export function getTotalDef(hero) {
-  return hero.def + (hero.armor?.def ?? 0);
+  return hero.def + (hero.armor?.def ?? 0) + (hero.bonusDef ?? 0);
 }
 
 export function recalcMaxHp(hero) {
   const bonus = hero.armor?.hp ?? 0;
   const prevMax = hero.maxHp;
-  hero.maxHp = hero.baseMaxHp + bonus;
+  hero.maxHp = hero.baseMaxHp + bonus + (hero.bonusHp ?? 0);
   if (hero.maxHp > prevMax) {
     hero.hp += hero.maxHp - prevMax;
   }
@@ -238,9 +246,11 @@ export function collectItem(hero, item) {
 
   if (item.type === 'gold') {
     const bonus = prof.goldBonus ? Math.floor(item.value * prof.goldBonus) : 0;
-    const total = item.value + bonus;
+    const luckBonus = luckGoldBonus(hero, item.value);
+    const skillBonus = Math.floor((item.value + bonus) * (hero.bonusGoldPct ?? 0));
+    const total = item.value + bonus + luckBonus + skillBonus;
     hero.gold += total;
-    return { type: 'gold', value: total, bonus };
+    return { type: 'gold', value: total, bonus, luckBonus, skillBonus };
   }
 
   if (item.type.startsWith('potion')) {

@@ -39,7 +39,7 @@
             <button class="class-card" data-class="thief">
               <canvas class="class-preview" width="48" height="48" data-class="thief"></canvas>
               <span class="class-name">Вор</span>
-              <span class="class-desc">+50% золота, обезвреживает ловушки</span>
+              <span class="class-desc">Высокая удача, +50% золота</span>
             </button>
             <button class="class-card" data-class="necromancer">
               <canvas class="class-preview" width="48" height="48" data-class="necromancer"></canvas>
@@ -48,22 +48,33 @@
             </button>
           </div>
         </div>
+        <div class="skill-select" id="skill-select">
+          <h2>Выберите навык</h2>
+          <p class="skill-select-hint">Каждый 3-й уровень — новое умение</p>
+          <div class="skill-grid" id="skill-grid"></div>
+        </div>
       </div>
 
       <aside class="panel">
         <section class="stats">
           <h2>Герой</h2>
-          <div class="stat-row"><span>Имя</span><strong id="hero-name">Арион</strong></div>
+          <div class="stat-row"><span>Имя</span><strong id="hero-name">—</strong></div>
           <div class="stat-row"><span>Класс</span><strong id="hero-class">—</strong></div>
           <div class="stat-row"><span>Уровень</span><strong id="hero-level">1</strong></div>
           <div class="stat-row"><span>HP</span><strong id="hero-hp">—</strong></div>
           <div class="stat-row"><span>ATK</span><strong id="hero-atk">—</strong></div>
           <div class="stat-row"><span>DEF</span><strong id="hero-def">—</strong></div>
+          <div class="stat-row"><span>Удача</span><strong id="hero-luck">—</strong></div>
           <div class="stat-row"><span>Оружие</span><strong id="hero-weapon">—</strong></div>
           <div class="stat-row"><span>Броня</span><strong id="hero-armor">—</strong></div>
           <div class="stat-row" id="minions-row" style="display:none"><span>Скелеты</span><strong id="hero-minions">0</strong></div>
           <div class="stat-row"><span>Золото</span><strong id="hero-gold">0</strong></div>
           <div class="stat-row"><span>Этаж</span><strong id="hero-floor">1</strong></div>
+        </section>
+
+        <section class="skills-panel">
+          <h2>Навыки</h2>
+          <ul id="hero-skills" class="skills-list"></ul>
         </section>
 
         <section class="log">

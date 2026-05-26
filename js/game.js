@@ -10,6 +10,7 @@ import { canDisarmTraps } from './classes.js';
 import { useHealer, purchaseFromMerchant } from './items.js';
 import { pickBestPurchase, merchantHasStock, hasWorthwhilePurchase } from './merchant.js';
 import { getAliveBoss } from './bosses.js';
+import { rollLuck } from './luck.js';
 import {
   processMinions,
   tickMonsterDecay,
@@ -18,6 +19,14 @@ import {
   getMaxMinions,
   countAliveMinions,
 } from './necromancy.js';
+import {
+  growSkillOnLevelUp,
+  learnSkill,
+  rollSkillChoices,
+  shouldPickSkillOnLevel,
+  getHeroSkillsList,
+  getHeroVision,
+} from './skills.js';
 
 export class Game {
   constructor(renderer, ui) {
@@ -38,6 +47,7 @@ export class Game {
     this.healers = [];
     this.merchant = null;
     this.minions = [];
+    this.pendingSkillPicks = 0;
   }
 
   start(professionId) {
@@ -63,7 +73,7 @@ export class Game {
     }
 
     this.hero.floor = floor;
-    const entities = spawnEntities(dungeon, floor);
+    const entities = spawnEntities(dungeon, floor, this.hero);
     this.monsters = entities.monsters;
     this.items = entities.items;
     this.traps = entities.traps;
@@ -85,7 +95,7 @@ export class Game {
   }
 
   revealAroundHero() {
-    const vision = getProfession(this.hero.profession).vision;
+    const vision = getHeroVision(this.hero);
     const vis = getVisibleTiles(this.hero.x, this.hero.y, vision);
     vis.forEach((k) => this.explored.add(k));
     this.visible = vis;
@@ -137,6 +147,11 @@ export class Game {
 
     if (canDisarmTraps(this.hero)) {
       this.doDisarm(trap);
+      return;
+    }
+
+    if (rollLuck(this.hero, 0.03)) {
+      this.log('Удача! Ловушка не сработала', 'info');
       return;
     }
 
@@ -217,6 +232,49 @@ export class Game {
     const minions = countAliveMinions(this.minions ?? []);
     const maxMinions = this.hero?.profession === 'necromancer' ? getMaxMinions(this.hero) : 0;
     this.ui.updateStats(this.hero, minions, maxMinions);
+    this.ui.updateSkills(getHeroSkillsList(this.hero));
+  }
+
+  processLevelUps(levels) {
+    for (const lv of levels) {
+      const grown = growSkillOnLevelUp(this.hero);
+      const skillLevel = this.hero.skills[grown.id];
+      this.log(`Уровень ${lv}! ${grown.name} → ${skillLevel}`, 'info');
+      if (shouldPickSkillOnLevel(lv)) {
+        this.pendingSkillPicks += 1;
+      }
+    }
+    this.syncStats();
+    if (this.pendingSkillPicks > 0) {
+      this.openSkillSelect();
+    }
+  }
+
+  openSkillSelect() {
+    const choices = rollSkillChoices(this.hero, 3);
+    if (!choices.length) {
+      this.pendingSkillPicks = 0;
+      return;
+    }
+    this.state = 'skill-select';
+    this.paused = true;
+    this.ui.showSkillSelect(choices, (skillId) => this.pickSkill(skillId));
+  }
+
+  pickSkill(skillId) {
+    const learned = learnSkill(this.hero, skillId);
+    if (learned) {
+      this.log(`Освоено: ${learned.name} (ур. ${learned.level})`, 'info');
+    }
+    this.pendingSkillPicks = Math.max(0, this.pendingSkillPicks - 1);
+    this.ui.hideSkillSelect();
+    this.syncStats();
+    if (this.pendingSkillPicks > 0) {
+      this.openSkillSelect();
+      return;
+    }
+    this.state = 'playing';
+    this.paused = false;
   }
 
   log(msg, type = '') {
@@ -388,7 +446,8 @@ export class Game {
       }
     } else {
       const rangeNote = result.ranged ? ' (дист.)' : '';
-      this.log(`${result.attackLabel}${rangeNote} по ${monster.name}: −${result.heroDmg} HP`, 'combat');
+      const critNote = result.crit ? ' Крит!' : '';
+      this.log(`${result.attackLabel}${rangeNote} по ${monster.name}: −${result.heroDmg} HP${critNote}`, 'combat');
     }
 
     if (result.drained > 0) {
@@ -451,7 +510,9 @@ export class Game {
       this.log(`${monster.name} повержен! +${monster.xp} XP`, 'combat');
       this.renderer.addParticle(monster.x, monster.y, '#ffd700', 30);
     }
-    levels.forEach((lv) => this.log(`Уровень ${lv}! Сила растёт!`, 'info'));
+    if (levels.length) {
+      this.processLevelUps(levels);
+    }
     this.tryRaiseMinion(monster);
   }
 
@@ -460,7 +521,10 @@ export class Game {
     if (!result) return;
 
     if (result.type === 'gold') {
-      const bonusText = result.bonus ? ` (+${result.bonus} бонус)` : '';
+      let bonusText = '';
+      if (result.bonus) bonusText += ` (+${result.bonus} бонус)`;
+      if (result.luckBonus) bonusText += ` (+${result.luckBonus} удача)`;
+      if (result.skillBonus) bonusText += ` (+${result.skillBonus} навык)`;
       this.log(`+${result.value} золота${bonusText}`, 'loot');
       this.renderer.addParticle(item.x, item.y, '#ffd700', 25);
     } else if (result.type === 'heal') {
@@ -493,7 +557,7 @@ export class Game {
 
     const nextFloor = this.hero.floor + 1;
     this.log(`Лестница найдена! Спуск на этаж ${nextFloor}`, 'info');
-    this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + 10);
+    this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + 10 + (this.hero.bonusRegen ?? 0));
     const dungeon = generateDungeon(nextFloor);
     this.map = dungeon.map;
     this.stairs = dungeon.stairs;
@@ -503,7 +567,7 @@ export class Game {
     this.hero.floor = nextFloor;
     this.hero.poison = 0;
     this.hero.slowed = 0;
-    const entities = spawnEntities(dungeon, nextFloor);
+    const entities = spawnEntities(dungeon, nextFloor, this.hero);
     this.monsters = entities.monsters;
     this.items = entities.items;
     this.traps = entities.traps;
@@ -572,6 +636,7 @@ export class Game {
     this.healers = [];
     this.merchant = null;
     this.minions = [];
+    this.pendingSkillPicks = 0;
     this.currentPath = [];
     this.accumulator = 0;
     this.ui.clearLog();

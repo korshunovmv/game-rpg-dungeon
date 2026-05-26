@@ -4,12 +4,14 @@ import { Renderer } from './renderer.js';
 import { Game } from './game.js';
 import { drawClassPreview } from './sprites.js';
 import { getTotalAtk, getTotalDef } from './items.js';
+import { getLuck } from './luck.js';
 
 class UI {
   constructor() {
     this.logEl = document.getElementById('log');
     this.overlay = document.getElementById('overlay');
     this.classSelect = document.getElementById('class-select');
+    this.heroName = document.getElementById('hero-name');
     this.heroHp = document.getElementById('hero-hp');
     this.heroGold = document.getElementById('hero-gold');
     this.heroLevel = document.getElementById('hero-level');
@@ -17,10 +19,15 @@ class UI {
     this.heroClass = document.getElementById('hero-class');
     this.heroAtk = document.getElementById('hero-atk');
     this.heroDef = document.getElementById('hero-def');
+    this.heroLuck = document.getElementById('hero-luck');
     this.heroWeapon = document.getElementById('hero-weapon');
     this.heroArmor = document.getElementById('hero-armor');
     this.heroMinions = document.getElementById('hero-minions');
     this.minionsRow = document.getElementById('minions-row');
+    this.heroSkills = document.getElementById('hero-skills');
+    this.skillSelect = document.getElementById('skill-select');
+    this.skillGrid = document.getElementById('skill-grid');
+    this.skillPickHandler = null;
   }
 
   clearLog() {
@@ -46,9 +53,11 @@ class UI {
   }
 
   updateStats(hero, minionCount = 0, maxMinions = 0) {
+    this.heroName.textContent = hero.name;
     this.heroHp.textContent = `${Math.max(0, hero.hp)}/${hero.maxHp}`;
     this.heroAtk.textContent = String(getTotalAtk(hero));
     this.heroDef.textContent = String(getTotalDef(hero));
+    this.heroLuck.textContent = String(getLuck(hero));
     this.heroWeapon.textContent = hero.weapon?.name ?? '—';
     this.heroArmor.textContent = hero.armor?.name ?? '—';
     if (hero.profession === 'necromancer') {
@@ -62,6 +71,50 @@ class UI {
     this.heroLevel.textContent = String(hero.level);
     this.heroFloor.textContent = String(hero.floor);
     this.heroClass.textContent = hero.professionName;
+  }
+
+  updateSkills(skills = []) {
+    if (!this.heroSkills) return;
+    this.heroSkills.innerHTML = '';
+    if (!skills.length) {
+      const li = document.createElement('li');
+      li.innerHTML = '<span>—</span><span></span>';
+      this.heroSkills.appendChild(li);
+      return;
+    }
+    for (const skill of skills) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${skill.name}</span><span>${skill.level}</span>`;
+      this.heroSkills.appendChild(li);
+    }
+  }
+
+  showSkillSelect(choices, onPick) {
+    this.skillPickHandler = onPick;
+    this.skillGrid.innerHTML = '';
+    for (const skill of choices) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'skill-card';
+      const levelText = skill.level > 0 ? `Текущий: ${skill.level} → ${skill.nextLevel}` : 'Новый навык';
+      btn.innerHTML = `
+        <span class="skill-card-name">${skill.name}</span>
+        <span class="skill-card-desc">${skill.desc}</span>
+        <span class="skill-card-level">${levelText}</span>
+      `;
+      btn.addEventListener('click', () => {
+        if (this.skillPickHandler) {
+          this.skillPickHandler(skill.id);
+        }
+      });
+      this.skillGrid.appendChild(btn);
+    }
+    this.skillSelect.classList.add('visible');
+  }
+
+  hideSkillSelect() {
+    this.skillSelect.classList.remove('visible');
+    this.skillPickHandler = null;
   }
 
   showOverlay(text) {
@@ -118,6 +171,7 @@ function main() {
   document.getElementById('btn-new').addEventListener('click', () => {
     game.restart();
     ui.hideOverlay();
+    ui.hideSkillSelect();
     ui.showClassSelect();
     document.getElementById('btn-pause').textContent = '⏸ Пауза';
   });

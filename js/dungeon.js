@@ -4,6 +4,7 @@ import { spawnTraps } from './traps.js';
 import { createLootItem, spawnHealers } from './items.js';
 import { spawnMerchant } from './merchant.js';
 import { isBossFloor, createBoss, findBossPosition } from './bosses.js';
+import { getLuck } from './luck.js';
 
 function createEmpty(w, h, fill = TILES.VOID) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -98,7 +99,8 @@ export function isWalkable(map, x, y) {
   return t === TILES.FLOOR || t === TILES.DOOR || t === TILES.STAIRS;
 }
 
-export function spawnEntities(dungeon, floor) {
+export function spawnEntities(dungeon, floor, hero = null) {
+  const luck = getLuck(hero);
   const { map, rooms, spawn, stairs } = dungeon;
   const monsters = [];
   const items = [];
@@ -138,7 +140,7 @@ export function spawnEntities(dungeon, floor) {
 
   for (let i = 0; i < itemCount && pool.length; i++) {
     const pos = pool.pop();
-    items.push(createLootItem(pos, floor, i));
+    items.push(createLootItem(pos, floor, i, luck));
   }
 
   const occupied = new Set([
@@ -158,7 +160,7 @@ export function spawnEntities(dungeon, floor) {
   traps.forEach((t) => occupied.add(`${t.x},${t.y}`));
   const healers = spawnHealers(dungeon, floor, occupied);
   if (healers.length) healers.forEach((h) => occupied.add(`${h.x},${h.y}`));
-  const merchant = spawnMerchant(dungeon, floor, occupied);
+  const merchant = spawnMerchant(dungeon, floor, occupied, luck);
 
   return { monsters, items, traps, healers, merchant };
 }

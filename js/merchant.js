@@ -1,5 +1,6 @@
 import { randInt, shuffle } from './utils.js';
 import { POTIONS, WEAPONS, ARMORS } from './items.js';
+import { luckMerchantChance } from './luck.js';
 
 const MERCHANT_NAMES = ['Странник', 'Купец', 'Бродячий торговец'];
 const SPAWN_CHANCE = 0.32;
@@ -99,8 +100,8 @@ export function generateMerchantStock(floor) {
   return stock;
 }
 
-export function spawnMerchant(dungeon, floor, occupied = new Set()) {
-  if (Math.random() > SPAWN_CHANCE) return null;
+export function spawnMerchant(dungeon, floor, occupied = new Set(), luck = 5) {
+  if (Math.random() > luckMerchantChance(SPAWN_CHANCE, luck)) return null;
 
   const { rooms, spawn, stairs } = dungeon;
   if (rooms.length < 2) return null;

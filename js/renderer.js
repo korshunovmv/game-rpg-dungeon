@@ -2,6 +2,13 @@ import { TILE, MAP_W, MAP_H, COLORS, TILES } from './config.js';
 import { key } from './utils.js';
 import { drawHeroSprite, drawHeroDeath } from './sprites.js';
 import { TRAP_TYPES } from './traps.js';
+import {
+  getDungeonTheme,
+  drawWallTile,
+  drawFloorTile,
+  drawStairsTile,
+  drawFogTile,
+} from './tiles.js';
 
 export class Renderer {
   constructor(canvas) {
@@ -51,7 +58,7 @@ export class Renderer {
     };
   }
 
-  drawTile(map, x, y, explored, visible, camX, camY) {
+  drawTile(map, x, y, explored, visible, camX, camY, theme) {
     const k = key(x, y);
     const seen = explored.has(k);
     const lit = visible.has(k);
@@ -62,34 +69,19 @@ export class Renderer {
     const ctx = this.ctx;
 
     if (!lit) {
-      ctx.fillStyle = COLORS.fog;
-      ctx.fillRect(sx, sy, TILE, TILE);
-      if (tile === TILES.WALL) {
-        ctx.fillStyle = COLORS.fogEdge;
-        ctx.fillRect(sx, sy, TILE, 3);
-      }
+      drawFogTile(ctx, sx, sy, theme, tile === TILES.WALL);
       return;
     }
 
     switch (tile) {
       case TILES.WALL:
-        ctx.fillStyle = COLORS.wall;
-        ctx.fillRect(sx, sy, TILE, TILE);
-        ctx.fillStyle = COLORS.wallTop;
-        ctx.fillRect(sx, sy, TILE, 4);
-        ctx.fillRect(sx, sy, 3, TILE);
+        drawWallTile(ctx, sx, sy, map, x, y, theme);
         break;
       case TILES.STAIRS:
-        ctx.fillStyle = COLORS.floorLit;
-        ctx.fillRect(sx, sy, TILE, TILE);
-        ctx.fillStyle = COLORS.stairs;
-        for (let i = 0; i < 4; i++) {
-          ctx.fillRect(sx + 2 + i * 3, sy + 10 - i * 2, 2, 2);
-        }
+        drawStairsTile(ctx, sx, sy, theme);
         break;
       default:
-        ctx.fillStyle = (x + y) % 2 === 0 ? COLORS.floor : COLORS.floorLit;
-        ctx.fillRect(sx, sy, TILE, TILE);
+        drawFloorTile(ctx, sx, sy, theme, x, y);
         break;
     }
   }
@@ -326,7 +318,7 @@ export class Renderer {
     }
   }
 
-  drawMinimap(map, explored, hero, stairs, camX, camY) {
+  drawMinimap(map, explored, hero, stairs, camX, camY, theme) {
     const ctx = this.ctx;
     const scale = 3;
     const mx = 8;
@@ -341,9 +333,9 @@ export class Renderer {
       for (let x = 0; x < MAP_W; x++) {
         if (!explored.has(key(x, y))) continue;
         const tile = map[y][x];
-        if (tile === TILES.WALL) ctx.fillStyle = '#333355';
-        else if (tile === TILES.STAIRS) ctx.fillStyle = COLORS.stairs;
-        else ctx.fillStyle = '#555577';
+        if (tile === TILES.WALL) ctx.fillStyle = theme.minimapWall;
+        else if (tile === TILES.STAIRS) ctx.fillStyle = theme.stairs;
+        else ctx.fillStyle = theme.minimapFloor;
         ctx.fillRect(mx + x * scale, my + y * scale, scale, scale);
       }
     }
@@ -387,10 +379,11 @@ export class Renderer {
 
     const camX = hero.x;
     const camY = hero.y;
+    const theme = getDungeonTheme(hero.floor ?? 1);
 
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
-        this.drawTile(map, x, y, explored, visible, camX, camY);
+        this.drawTile(map, x, y, explored, visible, camX, camY, theme);
       }
     }
 
@@ -431,7 +424,18 @@ export class Renderer {
     });
 
     this.drawHero(hero, camX, camY, frame);
-    this.drawMinimap(map, explored, hero, state.stairs, camX, camY);
+    this.drawMinimap(map, explored, hero, state.stairs, camX, camY, theme);
+    this.drawFloorLabel(theme, hero.floor ?? 1);
     this.drawParticles();
+  }
+
+  drawFloorLabel(theme, floor) {
+    const ctx = this.ctx;
+    ctx.font = '6px "Press Start 2P", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(8, this.canvas.height - 22, 210, 16);
+    ctx.fillStyle = theme.stairs;
+    ctx.fillText(`Этаж ${floor}: ${theme.name}`, 12, this.canvas.height - 10);
   }
 }
