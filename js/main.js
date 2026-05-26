@@ -45,7 +45,7 @@ class UI {
     }
   }
 
-  updateStats(hero, minionCount = 0) {
+  updateStats(hero, minionCount = 0, maxMinions = 0) {
     this.heroHp.textContent = `${Math.max(0, hero.hp)}/${hero.maxHp}`;
     this.heroAtk.textContent = String(getTotalAtk(hero));
     this.heroDef.textContent = String(getTotalDef(hero));
@@ -53,7 +53,8 @@ class UI {
     this.heroArmor.textContent = hero.armor?.name ?? '—';
     if (hero.profession === 'necromancer') {
       this.minionsRow.style.display = 'flex';
-      this.heroMinions.textContent = String(minionCount);
+      this.heroMinions.textContent =
+        maxMinions > 0 ? `${minionCount}/${maxMinions}` : String(minionCount);
     } else {
       this.minionsRow.style.display = 'none';
     }

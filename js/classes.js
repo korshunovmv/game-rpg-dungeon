@@ -71,6 +71,8 @@ export const PROFESSIONS = {
     vision: 6,
     attackRange: 3,
     attackLabel: 'Некромантия',
+    minionLimitBase: 2,
+    minionLimitLevelStep: 2,
     levelGrowth: { hp: 5, atk: 2, def: 1 },
   },
 };

@@ -15,6 +15,8 @@ import {
   tickMonsterDecay,
   tickMonsterCurses,
   tryRaiseSkeleton,
+  getMaxMinions,
+  countAliveMinions,
 } from './necromancy.js';
 
 export class Game {
@@ -212,8 +214,9 @@ export class Game {
   }
 
   syncStats() {
-    const minions = this.minions?.filter((s) => s.alive).length ?? 0;
-    this.ui.updateStats(this.hero, minions);
+    const minions = countAliveMinions(this.minions ?? []);
+    const maxMinions = this.hero?.profession === 'necromancer' ? getMaxMinions(this.hero) : 0;
+    this.ui.updateStats(this.hero, minions, maxMinions);
   }
 
   log(msg, type = '') {
@@ -418,16 +421,27 @@ export class Game {
   }
 
   tryRaiseMinion(monster) {
+    if (this.hero.profession !== 'necromancer') return;
+
+    const alive = countAliveMinions(this.minions);
+    const max = getMaxMinions(this.hero);
+    if (alive >= max) return;
+
     const sk = tryRaiseSkeleton(this.hero, monster, this.minions, this.map, this.monsters);
     if (sk) {
       this.minions.push(sk);
-      this.log('Поднят скелет-слуга!', 'info');
+      this.log(`Поднят скелет-слуга! (${alive + 1}/${max})`, 'info');
       this.renderer.addParticle(sk.x, sk.y, '#ccccaa', 25);
     }
   }
 
   onMonsterSlain(monster) {
+    const prevMax = getMaxMinions(this.hero);
     const levels = gainXp(this.hero, monster.xp);
+    const newMax = getMaxMinions(this.hero);
+    if (this.hero.profession === 'necromancer' && newMax > prevMax) {
+      this.log(`Лимит скелетов увеличен: ${newMax}`, 'info');
+    }
     if (monster.isBoss) {
       this.hero.gold += monster.goldReward ?? 0;
       this.log(`${monster.name} повержен! Лестница открыта! +${monster.goldReward} золота`, 'boss');

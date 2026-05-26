@@ -1,5 +1,6 @@
 import { randInt, manhattan, key } from './utils.js';
 import { isWalkable } from './dungeon.js';
+import { getProfession } from './classes.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -61,7 +62,15 @@ export function getNecromancerAttackRange() {
 }
 
 export function getMaxMinions(hero) {
-  return 2 + Math.floor(hero.level / 2);
+  if (hero.profession !== 'necromancer') return 0;
+  const prof = getProfession(hero.profession);
+  const base = prof.minionLimitBase ?? 2;
+  const step = prof.minionLimitLevelStep ?? 2;
+  return base + Math.floor(hero.level / step);
+}
+
+export function countAliveMinions(minions) {
+  return minions.filter((s) => s.alive).length;
 }
 
 function chooseNecroSpell(hero, monster, monsters, distance) {
@@ -192,7 +201,7 @@ export function tickMonsterCurses(monsters) {
 
 export function tryRaiseSkeleton(hero, monster, minions, map, monsters) {
   if (hero.profession !== 'necromancer') return null;
-  if (minions.filter((s) => s.alive).length >= getMaxMinions(hero)) return null;
+  if (countAliveMinions(minions) >= getMaxMinions(hero)) return null;
   if (Math.random() > 0.65) return null;
 
   const occupied = new Set([
