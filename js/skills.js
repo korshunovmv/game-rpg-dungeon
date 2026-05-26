@@ -71,14 +71,6 @@ export const CLASS_STARTER_SKILL = {
   necromancer: 'necromancy',
 };
 
-export const CLASS_GROW_PRIORITY = {
-  warrior: ['strength', 'toughness', 'vitality', 'precision'],
-  archer: ['precision', 'vision', 'fortune', 'strength'],
-  mage: ['arcane', 'vitality', 'fortune', 'regeneration'],
-  thief: ['fortune', 'greed', 'vision', 'vitality'],
-  necromancer: ['necromancy', 'arcane', 'vitality', 'fortune'],
-};
-
 const MAX_SKILL_LEVEL = 10;
 
 export function initHeroSkills(hero) {
@@ -126,19 +118,19 @@ export function getHeroSkillsList(hero) {
 }
 
 function pickSkillToGrow(hero) {
-  const owned = Object.keys(hero.skills ?? {}).filter((id) => hero.skills[id] > 0);
-  const priority = CLASS_GROW_PRIORITY[hero.profession] ?? [];
-
-  for (const id of priority) {
-    if (owned.includes(id) && hero.skills[id] < MAX_SKILL_LEVEL) return id;
-  }
-
-  const growable = owned.filter((id) => hero.skills[id] < MAX_SKILL_LEVEL);
+  const growable = Object.keys(hero.skills ?? {}).filter(
+    (id) => hero.skills[id] > 0 && hero.skills[id] < MAX_SKILL_LEVEL
+  );
   if (growable.length) {
     return growable[Math.floor(Math.random() * growable.length)];
   }
 
-  return priority[0] ?? 'vitality';
+  const pool = Object.keys(SKILL_DEFS).filter((id) => isSkillAvailable(hero, id));
+  if (pool.length) {
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  return CLASS_STARTER_SKILL[hero.profession] ?? 'vitality';
 }
 
 export function growSkillOnLevelUp(hero) {
@@ -157,6 +149,13 @@ export function learnSkill(hero, skillId) {
   hero.skills[skillId] = next;
   applySkillBonuses(hero);
   return { ...def, level: next };
+}
+
+export function learnRandomSkill(hero) {
+  const pool = Object.keys(SKILL_DEFS).filter((id) => isSkillAvailable(hero, id));
+  if (!pool.length) return null;
+  const skillId = pool[Math.floor(Math.random() * pool.length)];
+  return learnSkill(hero, skillId);
 }
 
 function isSkillAvailable(hero, skillId) {

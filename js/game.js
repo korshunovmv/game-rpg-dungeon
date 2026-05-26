@@ -1,12 +1,11 @@
 import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
-import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero } from './ai.js';
+import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget } from './ai.js';
 import { key } from './utils.js';
 import { GAME_SPEED } from './config.js';
-import { getProfession } from './classes.js';
+import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
 import { getTrapAt, triggerTrap, tickPoison, disarmTrap, revealTrapsForThief } from './traps.js';
-import { canDisarmTraps } from './classes.js';
 import { useHealer, purchaseFromMerchant } from './items.js';
 import { pickBestPurchase, merchantHasStock, hasWorthwhilePurchase } from './merchant.js';
 import { getAliveBoss } from './bosses.js';
@@ -21,8 +20,7 @@ import {
 } from './necromancy.js';
 import {
   growSkillOnLevelUp,
-  learnSkill,
-  rollSkillChoices,
+  learnRandomSkill,
   shouldPickSkillOnLevel,
   getHeroSkillsList,
   getHeroVision,
@@ -47,7 +45,6 @@ export class Game {
     this.healers = [];
     this.merchant = null;
     this.minions = [];
-    this.pendingSkillPicks = 0;
   }
 
   start(professionId) {
@@ -241,40 +238,13 @@ export class Game {
       const skillLevel = this.hero.skills[grown.id];
       this.log(`Уровень ${lv}! ${grown.name} → ${skillLevel}`, 'info');
       if (shouldPickSkillOnLevel(lv)) {
-        this.pendingSkillPicks += 1;
+        const learned = learnRandomSkill(this.hero);
+        if (learned) {
+          this.log(`Случайный навык: ${learned.name} (ур. ${learned.level})`, 'info');
+        }
       }
     }
     this.syncStats();
-    if (this.pendingSkillPicks > 0) {
-      this.openSkillSelect();
-    }
-  }
-
-  openSkillSelect() {
-    const choices = rollSkillChoices(this.hero, 3);
-    if (!choices.length) {
-      this.pendingSkillPicks = 0;
-      return;
-    }
-    this.state = 'skill-select';
-    this.paused = true;
-    this.ui.showSkillSelect(choices, (skillId) => this.pickSkill(skillId));
-  }
-
-  pickSkill(skillId) {
-    const learned = learnSkill(this.hero, skillId);
-    if (learned) {
-      this.log(`Освоено: ${learned.name} (ур. ${learned.level})`, 'info');
-    }
-    this.pendingSkillPicks = Math.max(0, this.pendingSkillPicks - 1);
-    this.ui.hideSkillSelect();
-    this.syncStats();
-    if (this.pendingSkillPicks > 0) {
-      this.openSkillSelect();
-      return;
-    }
-    this.state = 'playing';
-    this.paused = false;
   }
 
   log(msg, type = '') {
@@ -428,6 +398,10 @@ export class Game {
   }
 
   doCombat(monster, monsterInitiated = false, distance = 1) {
+    if (!canAttackTarget(this.map, this.hero.x, this.hero.y, monster.x, monster.y, getAttackRange(this.hero))) {
+      return;
+    }
+
     const result = combatRound(this.hero, monster, distance, this.monsters);
     const spellColor = result.spell?.color ?? '#ff4466';
     this.renderer.shakeScreen(result.spell?.id === 'arcane' ? 5 : 3);
@@ -636,7 +610,6 @@ export class Game {
     this.healers = [];
     this.merchant = null;
     this.minions = [];
-    this.pendingSkillPicks = 0;
     this.currentPath = [];
     this.accumulator = 0;
     this.ui.clearLog();

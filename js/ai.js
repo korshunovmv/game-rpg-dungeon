@@ -1,4 +1,5 @@
 import { MAP_W, MAP_H, MONSTER_VISION } from './config.js';
+import { TILES } from './config.js';
 import { isWalkable } from './dungeon.js';
 import { key, manhattan } from './utils.js';
 import { getAttackRange, getItemSearchRange, canDisarmTraps } from './classes.js';
@@ -64,6 +65,53 @@ export function findPath(map, sx, sy, gx, gy, blocked = new Set()) {
   }
 
   return null;
+}
+
+function blocksLineOfSight(map, x, y) {
+  if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return true;
+  const tile = map[y][x];
+  return tile === TILES.WALL || tile === TILES.VOID;
+}
+
+export function hasLineOfSight(map, x0, y0, x1, y1) {
+  if (x0 === x1 && y0 === y1) return true;
+
+  let x = x0;
+  let y = y0;
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const xInc = x0 < x1 ? 1 : -1;
+  const yInc = y0 < y1 ? 1 : -1;
+  let error = dx - dy;
+  const dx2 = dx * 2;
+  const dy2 = dy * 2;
+
+  for (;;) {
+    if (x === x1 && y === y1) return true;
+
+    if (x !== x0 || y !== y0) {
+      if (blocksLineOfSight(map, x, y)) return false;
+    }
+
+    if (error > 0) {
+      x += xInc;
+      error -= dy2;
+    } else if (error < 0) {
+      y += yInc;
+      error += dx2;
+    } else {
+      x += xInc;
+      y += yInc;
+      error += dx2 - dy2;
+    }
+  }
+}
+
+export function canAttackTarget(map, hx, hy, tx, ty, maxRange) {
+  const dist = manhattan(hx, hy, tx, ty);
+  if (dist > maxRange) return false;
+  if (dist <= 1) return true;
+  return hasLineOfSight(map, hx, hy, tx, ty);
 }
 
 export function getVisibleTiles(px, py, radius = 6) {
@@ -143,17 +191,17 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
   const boss = getAliveBoss(monsters);
   if (boss) {
     const bossDist = manhattan(hx, hy, boss.x, boss.y);
-    if (bossDist <= attackRange && (bossDist <= 1 || explored.has(key(boss.x, boss.y)))) {
+    if (canAttackTarget(map, hx, hy, boss.x, boss.y, attackRange)) {
       return { type: 'fight', target: boss, distance: bossDist };
     }
   }
 
   const targetMonster = monsters
-    .filter((m) => m.alive && manhattan(hx, hy, m.x, m.y) <= attackRange)
+    .filter((m) => m.alive && canAttackTarget(map, hx, hy, m.x, m.y, attackRange))
     .map((m) => ({ monster: m, dist: manhattan(hx, hy, m.x, m.y) }))
     .sort((a, b) => a.dist - b.dist)[0];
 
-  if (targetMonster && (targetMonster.dist <= 1 || explored.has(key(targetMonster.monster.x, targetMonster.monster.y)))) {
+  if (targetMonster) {
     return {
       type: 'fight',
       target: targetMonster.monster,
