@@ -1,0 +1,332 @@
+import { MAP_W, MAP_H, MONSTER_VISION } from './config.js';
+import { isWalkable } from './dungeon.js';
+import { key, manhattan } from './utils.js';
+import { getAttackRange, getItemSearchRange, canDisarmTraps } from './classes.js';
+import { getDisarmableTrap } from './traps.js';
+import { isHealingItem, itemPriority } from './items.js';
+
+const DIRS = [
+  [0, -1], [1, 0], [0, 1], [-1, 0],
+  [-1, -1], [1, -1], [1, 1], [-1, 1],
+];
+
+export function findPath(map, sx, sy, gx, gy, blocked = new Set()) {
+  if (sx === gx && sy === gy) return [];
+  if (!isWalkable(map, gx, gy)) return null;
+
+  const startK = key(sx, sy);
+  const goalK = key(gx, gy);
+  const open = [{ x: sx, y: sy, f: manhattan(sx, sy, gx, gy), g: 0 }];
+  const cameFrom = new Map();
+  const gScore = new Map([[startK, 0]]);
+  const closed = new Set();
+
+  while (open.length) {
+    open.sort((a, b) => a.f - b.f);
+    const current = open.shift();
+    const ck = key(current.x, current.y);
+
+    if (closed.has(ck)) continue;
+    closed.add(ck);
+
+    if (ck === goalK) {
+      const path = [];
+      let cur = goalK;
+      while (cur !== startK) {
+        const [px, py] = cur.split(',').map(Number);
+        path.unshift({ x: px, y: py });
+        cur = cameFrom.get(cur);
+      }
+      return path;
+    }
+
+    for (const [dx, dy] of DIRS) {
+      const nx = current.x + dx;
+      const ny = current.y + dy;
+      const nk = key(nx, ny);
+      if (!isWalkable(map, nx, ny) || blocked.has(nk) || closed.has(nk)) continue;
+
+      const stepCost = dx !== 0 && dy !== 0 ? 1.4 : 1;
+      const tentative = current.g + stepCost;
+      if (tentative >= (gScore.get(nk) ?? Infinity)) continue;
+
+      cameFrom.set(nk, ck);
+      gScore.set(nk, tentative);
+      open.push({
+        x: nx,
+        y: ny,
+        g: tentative,
+        f: tentative + manhattan(nx, ny, gx, gy),
+      });
+    }
+  }
+
+  return null;
+}
+
+export function getVisibleTiles(px, py, radius = 6) {
+  const visible = new Set();
+  for (let y = py - radius; y <= py + radius; y++) {
+    for (let x = px - radius; x <= px + radius; x++) {
+      if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
+      if (manhattan(px, py, x, y) <= radius) {
+        visible.add(key(x, y));
+      }
+    }
+  }
+  return visible;
+}
+
+function getRoomAt(rooms, x, y) {
+  return rooms.find(
+    (r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h
+  ) ?? null;
+}
+
+function getUncollectedItemsInRoom(room, items) {
+  return items.filter(
+    (i) => !i.collected
+      && i.x >= room.x && i.x < room.x + room.w
+      && i.y >= room.y && i.y < room.y + room.h
+  );
+}
+
+function findNearestItemPath(map, hx, hy, itemList, blocked, hero = null, needHeal = false) {
+  const sorted = itemList
+    .map((item) => ({
+      item,
+      dist: manhattan(hx, hy, item.x, item.y),
+      score: needHeal && isHealingItem(item)
+        ? itemPriority(item, hero) + 100
+        : itemPriority(item, hero),
+    }))
+    .sort((a, b) => {
+      if (Math.abs(a.score - b.score) > 0.01) return b.score - a.score;
+      return a.dist - b.dist;
+    });
+
+  for (const { item } of sorted) {
+    const path = findPath(map, hx, hy, item.x, item.y, blocked);
+    if (path?.length) {
+      return { path, goal: item };
+    }
+  }
+  return null;
+}
+
+function findHealerPath(map, hx, hy, healers, blocked) {
+  const sorted = healers
+    .filter((h) => !h.used)
+    .map((h) => ({ healer: h, dist: manhattan(hx, hy, h.x, h.y) }))
+    .sort((a, b) => a.dist - b.dist);
+
+  for (const { healer } of sorted) {
+    const path = findPath(map, hx, hy, healer.x, healer.y, blocked);
+    if (path?.length) {
+      return { path, goal: healer };
+    }
+  }
+  return null;
+}
+
+export function getExplorationTarget(map, hero, explored, monsters, items, rooms = [], traps = [], healers = []) {
+  const { x: hx, y: hy } = hero;
+  const attackRange = getAttackRange(hero);
+  const itemRange = getItemSearchRange(hero);
+  const needHeal = hero.hp / hero.maxHp < 0.45;
+  const blocked = new Set(
+    monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
+  );
+
+  const targetMonster = monsters
+    .filter((m) => m.alive && manhattan(hx, hy, m.x, m.y) <= attackRange)
+    .map((m) => ({ monster: m, dist: manhattan(hx, hy, m.x, m.y) }))
+    .sort((a, b) => a.dist - b.dist)[0];
+
+  if (targetMonster && (targetMonster.dist <= 1 || explored.has(key(targetMonster.monster.x, targetMonster.monster.y)))) {
+    return {
+      type: 'fight',
+      target: targetMonster.monster,
+      distance: targetMonster.dist,
+    };
+  }
+
+  if (canDisarmTraps(hero)) {
+    const adjacentTrap = getDisarmableTrap(traps, hx, hy, 1);
+    if (adjacentTrap) {
+      return { type: 'disarm', target: adjacentTrap };
+    }
+
+    const nearbyTrap = traps
+      .filter((t) => !t.disarmed && !t.triggered && t.revealed)
+      .map((t) => ({ trap: t, dist: manhattan(hx, hy, t.x, t.y) }))
+      .filter((e) => e.dist > 1 && e.dist <= itemRange)
+      .sort((a, b) => a.dist - b.dist)[0];
+
+    if (nearbyTrap) {
+      const path = findPath(map, hx, hy, nearbyTrap.trap.x, nearbyTrap.trap.y, blocked);
+      if (path?.length) {
+        return { type: 'disarm-move', path, goal: nearbyTrap.trap };
+      }
+    }
+  }
+
+  const onHealer = healers.find((h) => !h.used && h.x === hx && h.y === hy);
+  if (onHealer && hero.hp < hero.maxHp) {
+    return { type: 'heal', target: onHealer };
+  }
+
+  const onItem = items.find((i) => !i.collected && i.x === hx && i.y === hy);
+  if (onItem) {
+    if (!needHeal || isHealingItem(onItem) || onItem.type === 'gold') {
+      return { type: 'loot', target: onItem };
+    }
+  }
+
+  if (needHeal) {
+    const healItems = items.filter((i) => !i.collected && isHealingItem(i));
+    const healPath = findNearestItemPath(map, hx, hy, healItems, blocked, hero, true);
+    if (healPath) {
+      return { type: 'room-loot', path: healPath.path, goal: healPath.goal };
+    }
+
+    const healerPath = findHealerPath(map, hx, hy, healers, blocked);
+    if (healerPath) {
+      return { type: 'heal-move', path: healerPath.path, goal: healerPath.goal };
+    }
+  }
+
+  const currentRoom = getRoomAt(rooms, hx, hy);
+  if (currentRoom) {
+    const roomItems = getUncollectedItemsInRoom(currentRoom, items);
+    const roomLoot = findNearestItemPath(map, hx, hy, roomItems, blocked, hero, needHeal);
+    if (roomLoot) {
+      return { type: 'room-loot', path: roomLoot.path, goal: roomLoot.goal };
+    }
+  }
+
+  const nearItem = items
+    .filter((i) => !i.collected)
+    .map((i) => ({ item: i, dist: manhattan(hx, hy, i.x, i.y), score: itemPriority(i, hero) }))
+    .filter((e) => e.dist <= itemRange)
+    .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];
+
+  if (nearItem) {
+    const path = findPath(map, hx, hy, nearItem.item.x, nearItem.item.y, blocked);
+    if (path?.length) {
+      return { type: 'move', path, goal: nearItem.item };
+    }
+  }
+
+  const onItemFallback = items.find((i) => !i.collected && i.x === hx && i.y === hy);
+  if (onItemFallback) {
+    return { type: 'loot', target: onItemFallback };
+  }
+
+  const visibleMonster = monsters
+    .filter((m) => m.alive && explored.has(key(m.x, m.y)))
+    .map((m) => ({ monster: m, dist: manhattan(hx, hy, m.x, m.y) }))
+    .sort((a, b) => a.dist - b.dist)[0];
+
+  if (visibleMonster && visibleMonster.dist <= 10) {
+    const path = findPath(
+      map, hx, hy,
+      visibleMonster.monster.x,
+      visibleMonster.monster.y,
+      blocked
+    );
+    if (path?.length) {
+      return { type: 'move', path, goal: visibleMonster.monster };
+    }
+  }
+
+  const unexplored = [];
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (!isWalkable(map, x, y)) continue;
+      if (!explored.has(key(x, y))) {
+        unexplored.push({ x, y, dist: manhattan(hx, hy, x, y) });
+      }
+    }
+  }
+
+  unexplored.sort((a, b) => a.dist - b.dist);
+
+  for (const tile of unexplored.slice(0, 40)) {
+    const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
+    if (path?.length) {
+      return { type: 'explore', path, goal: tile };
+    }
+  }
+
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] === 4) {
+        const path = findPath(map, hx, hy, x, y, blocked);
+        if (path?.length) {
+          return { type: 'stairs', path, goal: { x, y } };
+        }
+      }
+    }
+  }
+
+  return { type: 'wait' };
+}
+
+export function wanderStep(map, x, y) {
+  const options = DIRS.slice(0, 4).filter(([dx, dy]) => isWalkable(map, x + dx, y + dy));
+  if (!options.length) return null;
+  const [dx, dy] = options[Math.floor(Math.random() * options.length)];
+  return { x: x + dx, y: y + dy };
+}
+
+export function canMonsterSeeHero(monster, hero) {
+  return manhattan(monster.x, monster.y, hero.x, hero.y) <= MONSTER_VISION;
+}
+
+export function moveMonstersTowardHero(map, hero, monsters) {
+  const hunters = monsters
+    .filter((m) => m.alive && canMonsterSeeHero(m, hero))
+    .sort((a, b) => manhattan(a.x, a.y, hero.x, hero.y) - manhattan(b.x, b.y, hero.x, hero.y));
+
+  const occupied = new Set(
+    monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
+  );
+
+  for (const monster of hunters) {
+    if ((monster.slowed ?? 0) > 0) {
+      monster.slowed -= 1;
+      continue;
+    }
+
+    const dist = manhattan(monster.x, monster.y, hero.x, hero.y);
+    if (dist <= 1) {
+      return monster;
+    }
+
+    const blocked = new Set(occupied);
+    blocked.delete(key(monster.x, monster.y));
+
+    const path = findPath(map, monster.x, monster.y, hero.x, hero.y, blocked);
+    if (!path?.length) continue;
+
+    const next = path[0];
+    if (next.x === hero.x && next.y === hero.y) {
+      return monster;
+    }
+
+    const nextKey = key(next.x, next.y);
+    if (occupied.has(nextKey)) continue;
+
+    occupied.delete(key(monster.x, monster.y));
+    monster.x = next.x;
+    monster.y = next.y;
+    occupied.add(nextKey);
+
+    if (manhattan(monster.x, monster.y, hero.x, hero.y) <= 1) {
+      return monster;
+    }
+  }
+
+  return null;
+}

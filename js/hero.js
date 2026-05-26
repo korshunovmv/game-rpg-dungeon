@@ -1,0 +1,99 @@
+import { randInt } from './utils.js';
+import { getProfession } from './classes.js';
+import { getTotalAtk, getTotalDef } from './items.js';
+import { mageCombatRound } from './magic.js';
+import { necromancerCombatRound } from './necromancy.js';
+
+export function createHero(spawn, professionId = 'warrior') {
+  const prof = getProfession(professionId);
+  return {
+    name: 'Арион',
+    profession: professionId,
+    professionName: prof.name,
+    color: prof.color,
+    x: spawn.x,
+    y: spawn.y,
+    hp: prof.hp,
+    maxHp: prof.hp,
+    baseMaxHp: prof.hp,
+    atk: prof.atk,
+    def: prof.def,
+    weapon: null,
+    armor: null,
+    level: 1,
+    xp: 0,
+    xpToLevel: 20,
+    gold: 0,
+    floor: 1,
+    poison: 0,
+    slowed: 0,
+    magicShield: 0,
+    alive: true,
+    facing: 'down',
+    animFrame: 0,
+  };
+}
+
+export function levelUp(hero) {
+  const growth = getProfession(hero.profession).levelGrowth;
+  hero.level += 1;
+  hero.baseMaxHp += growth.hp;
+  hero.hp = hero.baseMaxHp + (hero.armor?.hp ?? 0);
+  hero.maxHp = hero.baseMaxHp + (hero.armor?.hp ?? 0);
+  hero.atk += growth.atk;
+  hero.def += growth.def;
+  hero.xpToLevel = Math.floor(hero.xpToLevel * 1.5);
+  return hero;
+}
+
+export function gainXp(hero, amount) {
+  hero.xp += amount;
+  const leveled = [];
+  while (hero.xp >= hero.xpToLevel) {
+    hero.xp -= hero.xpToLevel;
+    levelUp(hero);
+    leveled.push(hero.level);
+  }
+  return leveled;
+}
+
+export function combatRound(hero, monster, distance = 1, monsters = []) {
+  if (hero.profession === 'mage') {
+    return mageCombatRound(hero, monster, monsters, distance);
+  }
+  if (hero.profession === 'necromancer') {
+    return necromancerCombatRound(hero, monster, monsters, distance);
+  }
+
+  const prof = getProfession(hero.profession);
+  let heroDmg = Math.max(1, getTotalAtk(hero) + randInt(-1, 2) - randInt(0, 1));
+  if (prof.magicBonus) {
+    heroDmg += prof.magicBonus + randInt(0, 2);
+  }
+
+  monster.hp -= heroDmg;
+
+  let monsterDmg = 0;
+  if (monster.hp > 0 && distance <= 1) {
+    monsterDmg = Math.max(1, monster.atk + randInt(-1, 1) - getTotalDef(hero));
+    hero.hp -= monsterDmg;
+  }
+
+  return {
+    heroDmg,
+    monsterDmg,
+    monsterDead: monster.hp <= 0,
+    heroDead: hero.hp <= 0,
+    attackLabel: prof.attackLabel,
+    ranged: distance > 1,
+  };
+}
+
+export { collectItem } from './items.js';
+
+export function updateFacing(hero, dx, dy) {
+  if (dy < 0) hero.facing = 'up';
+  else if (dy > 0) hero.facing = 'down';
+  else if (dx < 0) hero.facing = 'left';
+  else if (dx > 0) hero.facing = 'right';
+}

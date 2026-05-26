@@ -1,0 +1,267 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0f0f1a;
+  --panel: #1a1a2e;
+  --border: #3d3d6b;
+  --text: #e8e8ff;
+  --muted: #8888aa;
+  --accent: #ffd700;
+  --danger: #ff4466;
+  --success: #44ff88;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Press Start 2P', monospace;
+  min-height: 100vh;
+  image-rendering: pixelated;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 18px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.main {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.game-wrap {
+  position: relative;
+  border: 4px solid var(--border);
+  box-shadow: 0 0 0 2px var(--bg), 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+#game {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 12px;
+  text-align: center;
+  line-height: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.overlay.visible {
+  opacity: 1;
+}
+
+.class-select {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 2;
+}
+
+.class-select.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.class-select h2 {
+  font-size: 10px;
+  color: var(--accent);
+  text-align: center;
+}
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 480px;
+}
+
+.class-card {
+  font-family: inherit;
+  background: var(--panel);
+  border: 3px solid var(--border);
+  color: var(--text);
+  padding: 12px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.class-card:hover {
+  border-color: var(--accent);
+  background: #252545;
+}
+
+.class-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.class-preview {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 2px solid var(--border);
+  background: #0f0f1a;
+}
+
+.class-name {
+  font-size: 8px;
+  color: var(--accent);
+}
+
+.class-desc {
+  font-size: 5px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.panel {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel section {
+  background: var(--panel);
+  border: 3px solid var(--border);
+  padding: 12px;
+}
+
+.panel h2 {
+  font-size: 9px;
+  color: var(--accent);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 7px;
+  margin-bottom: 8px;
+}
+
+.stat-row span {
+  color: var(--muted);
+}
+
+.log {
+  flex: 1;
+  min-height: 200px;
+  max-height: 280px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#log {
+  list-style: none;
+  font-size: 6px;
+  line-height: 1.8;
+  overflow-y: auto;
+  flex: 1;
+}
+
+#log li {
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+
+#log li.combat { color: var(--danger); }
+#log li.loot { color: var(--accent); }
+#log li.info { color: var(--success); }
+#log li.trap { color: #ff8800; }
+#log li.death { color: #ff0044; }
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn {
+  font-family: inherit;
+  font-size: 7px;
+  padding: 10px;
+  background: var(--border);
+  color: var(--text);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn:hover {
+  background: #5555aa;
+}
+
+.btn-accent {
+  background: #664400;
+  color: var(--accent);
+}
+
+.btn-accent:hover {
+  background: #886600;
+}
+
+@media (max-width: 700px) {
+  .main {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .panel {
+    width: 100%;
+    max-width: 640px;
+  }
+}
