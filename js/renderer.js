@@ -123,6 +123,19 @@ export class Renderer {
       ctx.fillRect(sx + 5, sy + 4 + bob, 6, 2);
       ctx.fillStyle = '#ffffff44';
       ctx.fillRect(sx + 6, sy + 7 + bob, 4, 3);
+      return;
+    }
+
+    if (item.type === 'grave') {
+      ctx.fillStyle = '#665544';
+      ctx.fillRect(sx + 5, sy + 8 + bob, 6, 6);
+      ctx.fillRect(sx + 4, sy + 6 + bob, 8, 3);
+      ctx.fillStyle = '#998877';
+      ctx.fillRect(sx + 6, sy + 4 + bob, 4, 3);
+      ctx.fillStyle = '#ffcc88';
+      ctx.fillRect(sx + 7, sy + 9 + bob, 2, 2);
+      ctx.fillRect(sx + 5, sy + 11 + bob, 6, 1);
+      return;
     }
   }
 
@@ -244,9 +257,14 @@ export class Renderer {
     const ctx = this.ctx;
     const wobble = Math.sin(frame / 5 + monster.x) * 0.5;
 
-    ctx.fillStyle = COLORS.monster;
+    ctx.fillStyle = monster.color ?? COLORS.monster;
     ctx.fillRect(sx + 3, sy + 5 + wobble, 10, 8);
     ctx.fillRect(sx + 4, sy + 3 + wobble, 8, 4);
+
+    if (monster.isLegendary) {
+      ctx.fillStyle = '#ffcc44';
+      ctx.fillRect(sx + 4, sy + 1 + wobble, 8, 2);
+    }
 
     ctx.fillStyle = '#ffaaaa';
     ctx.fillRect(sx + 5, sy + 5 + wobble, 2, 2);
@@ -318,7 +336,7 @@ export class Renderer {
     }
   }
 
-  drawMinimap(map, explored, hero, stairs, camX, camY, theme) {
+  drawMinimap(map, explored, hero, stairs, camX, camY, theme, items = []) {
     const ctx = this.ctx;
     const scale = 3;
     const mx = 8;
@@ -342,6 +360,13 @@ export class Renderer {
 
     ctx.fillStyle = hero.color || COLORS.hero;
     ctx.fillRect(mx + hero.x * scale, my + hero.y * scale, scale, scale);
+
+    for (const item of items) {
+      if (item.type !== 'grave' || item.collected) continue;
+      if (!explored.has(key(item.x, item.y))) continue;
+      ctx.fillStyle = '#cc8866';
+      ctx.fillRect(mx + item.x * scale, my + item.y * scale, scale, scale);
+    }
 
     ctx.strokeStyle = '#ffffff44';
     const vx = mx + (camX - 10) * scale;
@@ -424,7 +449,7 @@ export class Renderer {
     });
 
     this.drawHero(hero, camX, camY, frame);
-    this.drawMinimap(map, explored, hero, state.stairs, camX, camY, theme);
+    this.drawMinimap(map, explored, hero, state.stairs, camX, camY, theme, items);
     this.drawFloorLabel(theme, hero.floor ?? 1);
     this.drawParticles();
   }

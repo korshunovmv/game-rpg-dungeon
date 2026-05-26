@@ -5,6 +5,7 @@ import { Game } from './game.js';
 import { drawClassPreview } from './sprites.js';
 import { getTotalAtk, getTotalDef } from './items.js';
 import { getLuck } from './luck.js';
+import { describeLegacyGift } from './legacy.js';
 
 class UI {
   constructor() {
@@ -25,6 +26,8 @@ class UI {
     this.heroMinions = document.getElementById('hero-minions');
     this.minionsRow = document.getElementById('minions-row');
     this.heroSkills = document.getElementById('hero-skills');
+    this.heroLegends = document.getElementById('hero-legends');
+    this.heroLegacy = document.getElementById('hero-legacy');
     this.skillSelect = document.getElementById('skill-select');
     this.skillGrid = document.getElementById('skill-grid');
     this.skillPickHandler = null;
@@ -86,6 +89,40 @@ class UI {
       const li = document.createElement('li');
       li.innerHTML = `<span>${skill.name}</span><span>${skill.level}</span>`;
       this.heroSkills.appendChild(li);
+    }
+  }
+
+  updateLegends(legends = []) {
+    if (!this.heroLegends) return;
+    this.heroLegends.innerHTML = '';
+    if (!legends.length) {
+      const li = document.createElement('li');
+      li.textContent = 'Пока пусто';
+      this.heroLegends.appendChild(li);
+      return;
+    }
+    for (const legend of legends) {
+      const li = document.createElement('li');
+      const tag = legend.reason === 'slayer' ? 'убийца' : 'реванш';
+      li.innerHTML = `<span class="legend-name">${legend.displayName}</span> — ${tag}, эт.${legend.originFloor}`;
+      this.heroLegends.appendChild(li);
+    }
+  }
+
+  updateLegacyList(legacies = []) {
+    if (!this.heroLegacy) return;
+    this.heroLegacy.innerHTML = '';
+    if (!legacies.length) {
+      const li = document.createElement('li');
+      li.textContent = 'Пока пусто';
+      this.heroLegacy.appendChild(li);
+      return;
+    }
+    for (const legacy of legacies) {
+      const li = document.createElement('li');
+      li.innerHTML =
+        `<span class="legend-name">${legacy.heroName}</span> — эт.${legacy.floor} (${legacy.x}, ${legacy.y}): ${describeLegacyGift(legacy.gift)}`;
+      this.heroLegacy.appendChild(li);
     }
   }
 

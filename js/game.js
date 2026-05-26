@@ -25,6 +25,21 @@ import {
   getHeroSkillsList,
   getHeroVision,
 } from './skills.js';
+import {
+  registerLegendaryFoe,
+  trackCombatRound,
+  wasBarelyWon,
+  markLegendAvenged,
+  getActiveLegends,
+  getLegendReasonText,
+} from './nemesis.js';
+import {
+  getUnclaimedLegacies,
+  getLegacyForFloor,
+  registerDeathLegacy,
+  placeGraveOnFloor,
+  describeLegacyGift,
+} from './legacy.js';
 
 export class Game {
   constructor(renderer, ui) {
@@ -45,6 +60,10 @@ export class Game {
     this.healers = [];
     this.merchant = null;
     this.minions = [];
+    this.legendaryFoes = [];
+    this.pendingLegacies = [];
+    this.floorSeeds = {};
+    this.lastCombatMonster = null;
   }
 
   start(professionId) {
@@ -54,8 +73,48 @@ export class Game {
     this.newDungeon(1);
   }
 
+  resolveFloorSeed(floor) {
+    const legacy = getLegacyForFloor(floor, this.pendingLegacies);
+    if (legacy?.seed != null) return legacy.seed >>> 0;
+    if (this.floorSeeds[floor] != null) return this.floorSeeds[floor];
+    const seed = (Math.random() * 0xffffffff) >>> 0;
+    this.floorSeeds[floor] = seed;
+    return seed;
+  }
+
+  spawnLegacyGrave(floor) {
+    const legacy = getLegacyForFloor(floor, this.pendingLegacies);
+    if (!legacy) return null;
+
+    const grave = placeGraveOnFloor(this.items, this.monsters, this.map, legacy);
+    if (!grave) return null;
+
+    this.log(
+      `На этаже ${floor} (${legacy.x}, ${legacy.y}) павший ${legacy.heroName} оставил ${describeLegacyGift(legacy.gift)}`,
+      'legacy'
+    );
+    return grave;
+  }
+
+  loadFloorEntities(dungeon, floor) {
+    const entities = spawnEntities(dungeon, floor, this.hero, this.legendaryFoes);
+    this.monsters = entities.monsters;
+    this.items = entities.items;
+    this.traps = entities.traps;
+    this.healers = entities.healers;
+    this.merchant = entities.merchant ?? null;
+    this.logLegendSpawns(entities.legendSpawns ?? []);
+    this.spawnLegacyGrave(floor);
+  }
+
   newDungeon(floor = 1) {
-    const dungeon = generateDungeon(floor);
+    if (floor === 1) {
+      this.pendingLegacies = getUnclaimedLegacies();
+      this.floorSeeds = {};
+    }
+
+    const seed = this.resolveFloorSeed(floor);
+    const dungeon = generateDungeon(floor, seed);
     this.map = dungeon.map;
     this.stairs = dungeon.stairs;
     this.rooms = dungeon.rooms;
@@ -63,19 +122,19 @@ export class Game {
     if (floor === 1) {
       this.hero = createHero(dungeon.spawn, this.profession);
       this.minions = [];
+      this.legendaryFoes = [];
       this.ui.log(`${this.hero.professionName} ${this.hero.name} входит в подземелье`, 'info');
+      const pending = this.pendingLegacies.length;
+      if (pending) {
+        this.ui.log(`В подземелье ${pending} невзятое наследие павших героев`, 'legacy');
+      }
     } else {
       this.hero.x = dungeon.spawn.x;
       this.hero.y = dungeon.spawn.y;
     }
 
     this.hero.floor = floor;
-    const entities = spawnEntities(dungeon, floor, this.hero);
-    this.monsters = entities.monsters;
-    this.items = entities.items;
-    this.traps = entities.traps;
-    this.healers = entities.healers;
-    this.merchant = entities.merchant ?? null;
+    this.loadFloorEntities(dungeon, floor);
     this.explored = new Set();
     this.visible = new Set();
     this.currentPath = [];
@@ -230,6 +289,55 @@ export class Game {
     const maxMinions = this.hero?.profession === 'necromancer' ? getMaxMinions(this.hero) : 0;
     this.ui.updateStats(this.hero, minions, maxMinions);
     this.ui.updateSkills(getHeroSkillsList(this.hero));
+    this.ui.updateLegends(getActiveLegends(this.legendaryFoes));
+    this.ui.updateLegacyList(this.pendingLegacies ?? getUnclaimedLegacies());
+  }
+
+  logLegendSpawns(spawns) {
+    for (const { monster, legend } of spawns) {
+      const reason = getLegendReasonText(legend.reason);
+      this.log(`${monster.name} вернулся! (${reason}, этаж ${legend.originFloor})`, 'nemesis');
+    }
+  }
+
+  noteLegendaryFoe(monster, reason) {
+    const entry = registerLegendaryFoe(
+      this.legendaryFoes,
+      monster,
+      reason,
+      this.hero.floor,
+      this.hero.level
+    );
+    if (!entry) return;
+
+    const reasonText = getLegendReasonText(reason);
+    this.log(`Запомнен враг: ${entry.displayName} (${reasonText})`, 'nemesis');
+    this.ui.updateLegends(getActiveLegends(this.legendaryFoes));
+  }
+
+  handleHeroDeath(killer = null) {
+    if (killer && killer.alive !== false) {
+      this.noteLegendaryFoe(killer, 'slayer');
+    }
+
+    const floorSeed = this.floorSeeds[this.hero.floor];
+    const legacy = registerDeathLegacy(
+      this.hero,
+      this.hero.floor,
+      this.hero.x,
+      this.hero.y,
+      floorSeed
+    );
+    if (legacy) {
+      this.pendingLegacies = getUnclaimedLegacies();
+      this.log(
+        `${this.hero.name} пал и оставил ${describeLegacyGift(legacy.gift)} на этаже ${legacy.floor}`,
+        'legacy'
+      );
+    }
+
+    this.hero.alive = false;
+    this.state = 'dead';
   }
 
   processLevelUps(levels) {
@@ -282,8 +390,7 @@ export class Game {
       this.log(`Яд: −${poison.damage} HP (${poison.remaining} ход.)`, 'trap');
       this.syncStats();
       if (this.hero.hp <= 0) {
-        this.hero.alive = false;
-        this.state = 'dead';
+        this.handleHeroDeath(this.lastCombatMonster);
         this.log('Герой пал от отравления...', 'death');
         this.ui.showOverlay('💀 ГЕРОЙ ПОГИБ\n\nНажмите «Новое подземелье»');
         return;
@@ -291,8 +398,7 @@ export class Game {
     }
 
     if (this.hero.hp <= 0) {
-      this.hero.alive = false;
-      this.state = 'dead';
+      this.handleHeroDeath(this.lastCombatMonster);
       this.log('Герой пал в подземелье...', 'death');
       this.ui.showOverlay('💀 ГЕРОЙ ПОГИБ\n\nНажмите «Новое подземелье»');
       this.syncStats();
@@ -403,6 +509,8 @@ export class Game {
     }
 
     const result = combatRound(this.hero, monster, distance, this.monsters);
+    this.lastCombatMonster = monster;
+    trackCombatRound(monster, this.hero, result.monsterDmg ?? 0);
     const spellColor = result.spell?.color ?? '#ff4466';
     this.renderer.shakeScreen(result.spell?.id === 'arcane' ? 5 : 3);
     this.renderer.addParticle(monster.x, monster.y, spellColor, 25);
@@ -450,6 +558,12 @@ export class Game {
       this.log(`${monster.name} бьёт: −${result.monsterDmg} HP`, 'combat');
     }
 
+    if (this.hero.hp <= 0) {
+      this.handleHeroDeath(monster);
+      this.log('Герой пал в бою...', 'death');
+      this.ui.showOverlay('💀 ГЕРОЙ ПОГИБ\n\nНажмите «Новое подземелье»');
+    }
+
     this.syncStats();
   }
 
@@ -469,6 +583,13 @@ export class Game {
   }
 
   onMonsterSlain(monster) {
+    if (monster.isLegendary && monster.legendKey) {
+      markLegendAvenged(this.legendaryFoes, monster.legendKey);
+      this.ui.updateLegends(getActiveLegends(this.legendaryFoes));
+    } else if (wasBarelyWon(this.hero, monster)) {
+      this.noteLegendaryFoe(monster, 'barely');
+    }
+
     const prevMax = getMaxMinions(this.hero);
     const levels = gainXp(this.hero, monster.xp);
     const newMax = getMaxMinions(this.hero);
@@ -480,6 +601,9 @@ export class Game {
       this.log(`${monster.name} повержен! Лестница открыта! +${monster.goldReward} золота`, 'boss');
       this.renderer.shakeScreen(10);
       this.renderer.addParticle(monster.x, monster.y, monster.color ?? '#ffd700', 45);
+    } else if (monster.isLegendary) {
+      this.log(`${monster.name} повержен! +${monster.xp} XP`, 'nemesis');
+      this.renderer.addParticle(monster.x, monster.y, monster.color ?? '#ff8844', 35);
     } else {
       this.log(`${monster.name} повержен! +${monster.xp} XP`, 'combat');
       this.renderer.addParticle(monster.x, monster.y, '#ffd700', 30);
@@ -519,6 +643,21 @@ export class Game {
         this.log(`${result.name} продан`, 'loot');
       }
       this.renderer.addParticle(item.x, item.y, '#888899', 20);
+    } else if (result.type === 'legacy_weapon') {
+      this.log(`Наследие ${result.heroName}: ${result.name} (+${result.atk} ATK)`, 'legacy');
+      this.renderer.addParticle(item.x, item.y, '#ffcc88', 35);
+    } else if (result.type === 'legacy_armor') {
+      this.log(`Наследие ${result.heroName}: ${result.name} (+${result.def} DEF)`, 'legacy');
+      this.renderer.addParticle(item.x, item.y, '#ffcc88', 35);
+    } else if (result.type === 'legacy_skill') {
+      this.log(`Наследие ${result.heroName}: навык «${result.name}» (ур. ${result.level})`, 'legacy');
+      this.renderer.addParticle(item.x, item.y, '#aa88ff', 35);
+    } else if (result.type === 'legacy_gold') {
+      this.log(`Наследие ${result.heroName}: +${result.value} золота`, 'legacy');
+      this.renderer.addParticle(item.x, item.y, '#ffd700', 30);
+    }
+    if (result.type?.startsWith('legacy_')) {
+      this.pendingLegacies = getUnclaimedLegacies();
     }
     this.syncStats();
   }
@@ -532,7 +671,8 @@ export class Game {
     const nextFloor = this.hero.floor + 1;
     this.log(`Лестница найдена! Спуск на этаж ${nextFloor}`, 'info');
     this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + 10 + (this.hero.bonusRegen ?? 0));
-    const dungeon = generateDungeon(nextFloor);
+    const seed = this.resolveFloorSeed(nextFloor);
+    const dungeon = generateDungeon(nextFloor, seed);
     this.map = dungeon.map;
     this.stairs = dungeon.stairs;
     this.rooms = dungeon.rooms;
@@ -541,12 +681,7 @@ export class Game {
     this.hero.floor = nextFloor;
     this.hero.poison = 0;
     this.hero.slowed = 0;
-    const entities = spawnEntities(dungeon, nextFloor, this.hero);
-    this.monsters = entities.monsters;
-    this.items = entities.items;
-    this.traps = entities.traps;
-    this.healers = entities.healers;
-    this.merchant = entities.merchant ?? null;
+    this.loadFloorEntities(dungeon, nextFloor);
     this.minions = [];
     this.explored = new Set();
     this.currentPath = [];
@@ -610,6 +745,10 @@ export class Game {
     this.healers = [];
     this.merchant = null;
     this.minions = [];
+    this.legendaryFoes = [];
+    this.pendingLegacies = getUnclaimedLegacies();
+    this.floorSeeds = {};
+    this.lastCombatMonster = null;
     this.currentPath = [];
     this.accumulator = 0;
     this.ui.clearLog();

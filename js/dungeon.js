@@ -1,10 +1,11 @@
 import { MAP_W, MAP_H, TILES } from './config.js';
-import { randInt, shuffle } from './utils.js';
+import { randInt, shuffle, createSeededRng } from './utils.js';
 import { spawnTraps } from './traps.js';
 import { createLootItem, spawnHealers } from './items.js';
 import { spawnMerchant } from './merchant.js';
 import { isBossFloor, createBoss, findBossPosition } from './bosses.js';
 import { getLuck } from './luck.js';
+import { spawnLegendaryMonsters } from './nemesis.js';
 
 function createEmpty(w, h, fill = TILES.VOID) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -27,13 +28,14 @@ function roomsOverlap(a, b, pad = 1) {
   );
 }
 
-function createRoom(attempts = 80) {
+function createRoom(attempts = 80, rng = null) {
+  const ri = rng?.randInt ?? randInt;
   const rooms = [];
   for (let i = 0; i < attempts; i++) {
-    const w = randInt(4, 9);
-    const h = randInt(4, 7);
-    const x = randInt(1, MAP_W - w - 2);
-    const y = randInt(1, MAP_H - h - 2);
+    const w = ri(4, 9);
+    const h = ri(4, 7);
+    const x = ri(1, MAP_W - w - 2);
+    const y = ri(1, MAP_H - h - 2);
     const room = { x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) };
     if (!rooms.some((r) => roomsOverlap(room, r))) {
       rooms.push(room);
@@ -55,9 +57,11 @@ function connectRooms(map, a, b) {
   }
 }
 
-export function generateDungeon(floor = 1) {
+export function generateDungeon(floor = 1, seed = null) {
+  const rng = seed != null ? createSeededRng(seed >>> 0) : null;
+  const sh = rng?.shuffle ?? shuffle;
   const map = createEmpty(MAP_W, MAP_H, TILES.WALL);
-  const rooms = createRoom(10 + Math.floor(floor / 2));
+  const rooms = createRoom(10 + Math.floor(floor / 2), rng);
 
   if (rooms.length === 0) {
     map[Math.floor(MAP_H / 2)][Math.floor(MAP_W / 2)] = TILES.FLOOR;
@@ -71,7 +75,7 @@ export function generateDungeon(floor = 1) {
 
   rooms.forEach((room) => carveRoom(map, room));
 
-  const ordered = shuffle(rooms);
+  const ordered = sh(rooms);
   for (let i = 1; i < ordered.length; i++) {
     connectRooms(map, ordered[i - 1], ordered[i]);
   }
@@ -99,7 +103,7 @@ export function isWalkable(map, x, y) {
   return t === TILES.FLOOR || t === TILES.DOOR || t === TILES.STAIRS;
 }
 
-export function spawnEntities(dungeon, floor, hero = null) {
+export function spawnEntities(dungeon, floor, hero = null, legends = []) {
   const luck = getLuck(hero);
   const { map, rooms, spawn, stairs } = dungeon;
   const monsters = [];
@@ -124,12 +128,14 @@ export function spawnEntities(dungeon, floor, hero = null) {
   const names = ['гоблин', 'скелет', 'слизь', 'крысолюд', 'призрак', 'орк'];
   for (let i = 0; i < monsterCount && pool.length; i++) {
     const pos = pool.pop();
+    const name = names[randInt(0, names.length - 1)];
     const hp = 8 + floor * 4 + randInt(0, 6);
     monsters.push({
       id: `m-${i}-${Date.now()}`,
       x: pos.x,
       y: pos.y,
-      name: names[randInt(0, names.length - 1)],
+      name,
+      baseName: name,
       hp,
       maxHp: hp,
       atk: 2 + floor + randInt(0, 2),
@@ -138,15 +144,23 @@ export function spawnEntities(dungeon, floor, hero = null) {
     });
   }
 
+  const occupied = new Set([
+    ...monsters.map((m) => `${m.x},${m.y}`),
+  ]);
+
+  const legendSpawns = spawnLegendaryMonsters(dungeon, floor, pool, legends, occupied);
+  for (const { monster } of legendSpawns) {
+    monsters.push(monster);
+  }
+
   for (let i = 0; i < itemCount && pool.length; i++) {
     const pos = pool.pop();
     items.push(createLootItem(pos, floor, i, luck));
   }
 
-  const occupied = new Set([
-    ...monsters.map((m) => `${m.x},${m.y}`),
-    ...items.map((i) => `${i.x},${i.y}`),
-  ]);
+  occupied.clear();
+  for (const m of monsters) occupied.add(`${m.x},${m.y}`);
+  for (const item of items) occupied.add(`${item.x},${item.y}`);
 
   if (isBossFloor(floor)) {
     const bossPos = findBossPosition(map, stairs, occupied);
@@ -162,5 +176,5 @@ export function spawnEntities(dungeon, floor, hero = null) {
   if (healers.length) healers.forEach((h) => occupied.add(`${h.x},${h.y}`));
   const merchant = spawnMerchant(dungeon, floor, occupied, luck);
 
-  return { monsters, items, traps, healers, merchant };
+  return { monsters, items, traps, healers, merchant, legendSpawns };
 }

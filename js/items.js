@@ -1,6 +1,7 @@
 import { randInt, shuffle } from './utils.js';
 import { getProfession } from './classes.js';
 import { applyLuckLootWeights, luckGoldBonus } from './luck.js';
+import { collectLegacyGrave } from './legacy.js';
 
 export const POTIONS = {
   potion_small: { id: 'potion_small', name: 'Малое зелье', heal: 15, color: '#66cc66' },
@@ -241,6 +242,9 @@ export function purchaseFromMerchant(hero, item) {
 
 export function collectItem(hero, item) {
   if (item.collected) return null;
+  if (item.type === 'grave') {
+    return collectLegacyGrave(hero, item);
+  }
   item.collected = true;
   const prof = getProfession(hero.profession);
 
@@ -311,6 +315,7 @@ export function isHealingItem(item) {
 }
 
 export function itemPriority(item, hero) {
+  if (item.type === 'grave') return 1000;
   if (isHealingItem(item)) {
     const missing = hero.maxHp - hero.hp;
     if (missing <= 0) return 0;

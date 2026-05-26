@@ -268,6 +268,34 @@ body {
   color: var(--success);
 }
 
+.legends-list {
+  list-style: none;
+  font-size: 5px;
+  line-height: 1.8;
+  max-height: 72px;
+  overflow-y: auto;
+}
+
+.legends-list li {
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+
+.legends-list li span.legend-name {
+  color: #ff8866;
+}
+
+.panel-sub {
+  font-size: 5px;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
+.legends-panel .legends-list {
+  max-height: 56px;
+  margin-bottom: 8px;
+}
+
 .panel {
   width: 280px;
   display: flex;
@@ -328,6 +356,8 @@ body {
 #log li.trap { color: #ff8800; }
 #log li.shop { color: #ffd700; }
 #log li.boss { color: #ff66ff; }
+#log li.nemesis { color: #ff8866; }
+#log li.legacy { color: #ccaa66; }
 #log li.death { color: #ff0044; }
 
 .controls {
