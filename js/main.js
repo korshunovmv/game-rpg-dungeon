@@ -1,4 +1,5 @@
 import { CANVAS_W, CANVAS_H } from './config.js';
+import { VERSION } from './version.js';
 import { Renderer } from './renderer.js';
 import { Game } from './game.js';
 import { drawClassPreview } from './sprites.js';
@@ -76,6 +77,11 @@ function main() {
   const canvas = document.getElementById('game');
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
+
+  const versionEl = document.getElementById('app-version');
+  if (versionEl) {
+    versionEl.textContent = `v${VERSION}`;
+  }
 
   const ui = new UI();
   const renderer = new Renderer(canvas);

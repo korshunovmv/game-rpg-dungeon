@@ -186,6 +186,51 @@ function armorScore(a) {
   return (a.def ?? 0) * 2 + (a.hp ?? 0) + (a.atk ?? 0);
 }
 
+export function purchaseFromMerchant(hero, item) {
+  if (item.sold || hero.gold < item.price) return null;
+
+  hero.gold -= item.price;
+  item.sold = true;
+
+  if (item.type.startsWith('potion')) {
+    const hadPoison = hero.poison > 0;
+    const healed = Math.min(item.heal, hero.maxHp - hero.hp);
+    hero.hp += healed;
+    if (hadPoison) hero.poison = 0;
+    return {
+      type: 'heal',
+      name: item.name,
+      value: healed,
+      price: item.price,
+      cured: hadPoison,
+    };
+  }
+
+  if (item.type === 'weapon') {
+    equipWeapon(hero, item);
+    return {
+      type: 'weapon',
+      name: item.name,
+      atk: item.atk,
+      price: item.price,
+      equipped: true,
+    };
+  }
+
+  if (item.type === 'armor') {
+    equipArmor(hero, item);
+    return {
+      type: 'armor',
+      name: item.name,
+      def: item.def,
+      price: item.price,
+      equipped: true,
+    };
+  }
+
+  return null;
+}
+
 export function collectItem(hero, item) {
   if (item.collected) return null;
   item.collected = true;

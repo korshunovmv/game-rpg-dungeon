@@ -151,6 +151,31 @@ export class Renderer {
     ctx.fillRect(sx + 6, sy + 3 + pulse, 4, 2);
   }
 
+  drawMerchant(merchant, camX, camY, frame) {
+    const { sx, sy } = this.worldToScreen(merchant.x, merchant.y, camX, camY);
+    const ctx = this.ctx;
+    const pulse = Math.sin(frame / 10) * 0.5;
+
+    ctx.fillStyle = '#553311';
+    ctx.fillRect(sx + 2, sy + 10, 12, 5);
+    ctx.fillStyle = '#664422';
+    ctx.fillRect(sx + 3, sy + 8, 10, 3);
+    ctx.fillStyle = '#886633';
+    ctx.fillRect(sx + 4, sy + 6, 8, 2);
+
+    ctx.fillStyle = '#ffcc44';
+    ctx.fillRect(sx + 5 + pulse, sy + 12, 2, 2);
+    ctx.fillRect(sx + 9 - pulse, sy + 11, 2, 2);
+    ctx.fillRect(sx + 7, sy + 13, 2, 2);
+
+    ctx.fillStyle = '#cc8844';
+    ctx.fillRect(sx + 6, sy + 3, 4, 4);
+    ctx.fillStyle = '#aa6633';
+    ctx.fillRect(sx + 5, sy + 2, 6, 2);
+    ctx.fillStyle = '#442211';
+    ctx.fillRect(sx + 6, sy + 4, 4, 2);
+  }
+
   drawTrap(trap, camX, camY, frame) {
     if (trap.triggered || trap.disarmed) return;
     if (!trap.revealed) return;
@@ -219,6 +244,10 @@ export class Renderer {
 
   drawMonster(monster, camX, camY, frame) {
     if (!monster.alive) return;
+    if (monster.isBoss) {
+      this.drawBoss(monster, camX, camY, frame);
+      return;
+    }
     const { sx, sy } = this.worldToScreen(monster.x, monster.y, camX, camY);
     const ctx = this.ctx;
     const wobble = Math.sin(frame / 5 + monster.x) * 0.5;
@@ -236,6 +265,37 @@ export class Renderer {
     ctx.fillRect(sx + 2, sy + 1, 12, 2);
     ctx.fillStyle = '#ff0044';
     ctx.fillRect(sx + 2, sy + 1, 12 * hpPct, 2);
+  }
+
+  drawBoss(boss, camX, camY, frame) {
+    const { sx, sy } = this.worldToScreen(boss.x, boss.y, camX, camY);
+    const ctx = this.ctx;
+    const pulse = Math.sin(frame / 4 + boss.x) * 0.8;
+    const color = boss.color ?? '#ff2244';
+
+    ctx.fillStyle = '#220022';
+    ctx.fillRect(sx + 1, sy + 2 + pulse, 14, 12);
+    ctx.fillStyle = color;
+    ctx.fillRect(sx + 2, sy + 4 + pulse, 12, 9);
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillRect(sx + 4, sy + 1 + pulse, 8, 3);
+    ctx.fillRect(sx + 5, sy + 0 + pulse, 2, 2);
+    ctx.fillRect(sx + 9, sy + 0 + pulse, 2, 2);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sx + 4, sy + 6 + pulse, 3, 3);
+    ctx.fillRect(sx + 9, sy + 6 + pulse, 3, 3);
+    ctx.fillStyle = '#110011';
+    ctx.fillRect(sx + 5, sy + 7 + pulse, 1, 1);
+    ctx.fillRect(sx + 10, sy + 7 + pulse, 1, 1);
+
+    const hpPct = boss.hp / boss.maxHp;
+    ctx.fillStyle = '#330000';
+    ctx.fillRect(sx + 1, sy - 1, 14, 3);
+    ctx.fillStyle = '#ff0044';
+    ctx.fillRect(sx + 1, sy - 1, 14 * hpPct, 3);
+    ctx.fillStyle = color;
+    ctx.fillRect(sx + 1, sy - 1, 14 * hpPct, 1);
   }
 
   drawMinion(minion, camX, camY, frame) {
@@ -319,7 +379,7 @@ export class Renderer {
   }
 
   render(state) {
-    const { map, hero, monsters, items, traps = [], healers = [], minions = [], explored, visible, frame } = state;
+    const { map, hero, monsters, items, traps = [], healers = [], merchant = null, minions = [], explored, visible, frame } = state;
     const ctx = this.ctx;
 
     ctx.fillStyle = '#000';
@@ -351,6 +411,12 @@ export class Renderer {
         this.drawHealer(healer, camX, camY, frame);
       }
     });
+
+    if (merchant && merchant.stock.some((i) => !i.sold)) {
+      if (explored.has(key(merchant.x, merchant.y)) && visible.has(key(merchant.x, merchant.y))) {
+        this.drawMerchant(merchant, camX, camY, frame);
+      }
+    }
 
     monsters.forEach((m) => {
       if (explored.has(key(m.x, m.y)) && visible.has(key(m.x, m.y))) {

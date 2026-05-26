@@ -2,6 +2,8 @@ import { MAP_W, MAP_H, TILES } from './config.js';
 import { randInt, shuffle } from './utils.js';
 import { spawnTraps } from './traps.js';
 import { createLootItem, spawnHealers } from './items.js';
+import { spawnMerchant } from './merchant.js';
+import { isBossFloor, createBoss, findBossPosition } from './bosses.js';
 
 function createEmpty(w, h, fill = TILES.VOID) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -110,7 +112,9 @@ export function spawnEntities(dungeon, floor) {
     }
   }
 
-  const monsterCount = Math.min(floorTiles.length / 8, 8 + floor * 2);
+  const monsterCount = isBossFloor(floor)
+    ? Math.min(floorTiles.length / 12, 4 + floor)
+    : Math.min(floorTiles.length / 8, 8 + floor * 2);
   const itemCount = Math.min(floorTiles.length / 10, 8 + floor);
 
   const pool = shuffle(floorTiles.filter((t) => !(t.x === stairs.x && t.y === stairs.y)));
@@ -141,9 +145,20 @@ export function spawnEntities(dungeon, floor) {
     ...monsters.map((m) => `${m.x},${m.y}`),
     ...items.map((i) => `${i.x},${i.y}`),
   ]);
+
+  if (isBossFloor(floor)) {
+    const bossPos = findBossPosition(map, stairs, occupied);
+    if (bossPos) {
+      monsters.push(createBoss(floor, bossPos));
+      occupied.add(`${bossPos.x},${bossPos.y}`);
+    }
+  }
+
   const traps = spawnTraps(dungeon, floor, occupied);
   traps.forEach((t) => occupied.add(`${t.x},${t.y}`));
   const healers = spawnHealers(dungeon, floor, occupied);
+  if (healers.length) healers.forEach((h) => occupied.add(`${h.x},${h.y}`));
+  const merchant = spawnMerchant(dungeon, floor, occupied);
 
-  return { monsters, items, traps, healers };
+  return { monsters, items, traps, healers, merchant };
 }

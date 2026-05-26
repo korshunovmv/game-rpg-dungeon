@@ -7,7 +7,9 @@ import { GAME_SPEED } from './config.js';
 import { getProfession } from './classes.js';
 import { getTrapAt, triggerTrap, tickPoison, disarmTrap, revealTrapsForThief } from './traps.js';
 import { canDisarmTraps } from './classes.js';
-import { useHealer } from './items.js';
+import { useHealer, purchaseFromMerchant } from './items.js';
+import { pickBestPurchase, merchantHasStock, hasWorthwhilePurchase } from './merchant.js';
+import { getAliveBoss } from './bosses.js';
 import {
   processMinions,
   tickMonsterDecay,
@@ -32,6 +34,7 @@ export class Game {
     this.items = [];
     this.traps = [];
     this.healers = [];
+    this.merchant = null;
     this.minions = [];
   }
 
@@ -63,6 +66,7 @@ export class Game {
     this.items = entities.items;
     this.traps = entities.traps;
     this.healers = entities.healers;
+    this.merchant = entities.merchant ?? null;
     this.explored = new Set();
     this.visible = new Set();
     this.currentPath = [];
@@ -70,6 +74,10 @@ export class Game {
     this.state = 'playing';
     this.revealAroundHero();
     this.ui.log(`Этаж ${floor}.`, 'info');
+    const boss = getAliveBoss(this.monsters);
+    if (boss) {
+      this.ui.log(`БОСС: ${boss.name} охраняет лестницу!`, 'boss');
+    }
     this.syncStats();
     this.ui.hideOverlay();
   }
@@ -82,6 +90,20 @@ export class Game {
     if (canDisarmTraps(this.hero)) {
       revealTrapsForThief(this.traps, vis);
     }
+    this.tryMeetMerchant();
+  }
+
+  tryMeetMerchant() {
+    if (!this.merchant || this.merchant.met || !merchantHasStock(this.merchant)) return;
+
+    const onTile =
+      this.merchant.x === this.hero.x && this.merchant.y === this.hero.y;
+    const inSight = this.visible.has(key(this.merchant.x, this.merchant.y));
+
+    if (onTile || inSight) {
+      this.merchant.met = true;
+      this.log(`${this.merchant.name}: «Стой, путник! У меня есть что предложить.»`, 'shop');
+    }
   }
 
   applyHeroMove(nx, ny) {
@@ -90,12 +112,21 @@ export class Game {
     this.hero.y = ny;
     this.checkTrap();
     this.checkHealer();
+    this.checkMerchant();
 
     if (this.hero.hp <= 0) return;
 
     if (this.map[ny][nx] === TILES.STAIRS) {
+      if (this.isBossBlocking()) {
+        this.log('Лестница запечатана — победите босса!', 'boss');
+        return;
+      }
       this.descendStairs();
     }
+  }
+
+  isBossBlocking() {
+    return getAliveBoss(this.monsters) !== null;
   }
 
   checkTrap() {
@@ -140,6 +171,39 @@ export class Game {
     this.syncStats();
   }
 
+  checkMerchant() {
+    if (!this.merchant || !merchantHasStock(this.merchant)) return;
+    if (this.merchant.x !== this.hero.x || this.merchant.y !== this.hero.y) return;
+
+    this.tryMeetMerchant();
+
+    if (hasWorthwhilePurchase(this.hero, this.merchant)) {
+      this.doShop(this.merchant);
+    }
+  }
+
+  doShop(merchant) {
+    const item = pickBestPurchase(this.hero, merchant);
+    if (!item) return;
+
+    const result = purchaseFromMerchant(this.hero, item);
+    if (!result) return;
+
+    const seller = merchant.name ?? 'Торговец';
+    if (result.type === 'heal') {
+      const cureText = result.cured ? ', яд снят' : '';
+      this.log(`${seller}: ${result.name} за ${result.price} зол. (+${result.value} HP${cureText})`, 'shop');
+      this.renderer.addParticle(this.hero.x, this.hero.y, '#44ff88', 25);
+    } else if (result.type === 'weapon') {
+      this.log(`${seller}: ${result.name} (+${result.atk} ATK) за ${result.price} зол.`, 'shop');
+      this.renderer.addParticle(this.hero.x, this.hero.y, '#cccccc', 20);
+    } else if (result.type === 'armor') {
+      this.log(`${seller}: ${result.name} (+${result.def} DEF) за ${result.price} зол.`, 'shop');
+      this.renderer.addParticle(this.hero.x, this.hero.y, '#888899', 20);
+    }
+    this.syncStats();
+  }
+
   doDisarm(trap) {
     const result = disarmTrap(trap);
     this.renderer.addParticle(trap.x, trap.y, result.particleColor, 20);
@@ -167,9 +231,7 @@ export class Game {
       this.log(`Чума: ${hit.monster.name} −${hit.damage} HP`, 'trap');
       if (hit.dead) {
         hit.monster.alive = false;
-        const levels = gainXp(this.hero, hit.monster.xp);
-        this.log(`${hit.monster.name} повержен! +${hit.monster.xp} XP`, 'combat');
-        levels.forEach((lv) => this.log(`Уровень ${lv}! Сила растёт!`, 'info'));
+        this.onMonsterSlain(hit.monster);
       }
       this.syncStats();
     }
@@ -180,10 +242,7 @@ export class Game {
         this.renderer.addParticle(ev.monster.x, ev.monster.y, '#ccccaa', 15);
       }
       if (ev.type === 'kill') {
-        const levels = gainXp(this.hero, ev.monster.xp);
-        this.log(`${ev.monster.name} повержен скелетом! +${ev.monster.xp} XP`, 'combat');
-        levels.forEach((lv) => this.log(`Уровень ${lv}! Сила растёт!`, 'info'));
-        this.tryRaiseMinion(ev.monster);
+        this.onMonsterSlain(ev.monster);
       }
     }
 
@@ -230,7 +289,8 @@ export class Game {
       this.items,
       this.rooms,
       this.traps,
-      this.healers
+      this.healers,
+      this.merchant
     );
 
     if (action.type === 'fight') {
@@ -248,6 +308,11 @@ export class Game {
       return;
     }
 
+    if (action.type === 'shop') {
+      this.doShop(action.target);
+      return;
+    }
+
     if (action.type === 'loot') {
       this.doLoot(action.target);
       return;
@@ -262,6 +327,10 @@ export class Game {
         this.currentPath = [...action.path];
       }
     } else if (action.type === 'heal-move') {
+      if (action.path?.length) {
+        this.currentPath = [...action.path];
+      }
+    } else if (action.type === 'merchant-move') {
       if (action.path?.length) {
         this.currentPath = [...action.path];
       }
@@ -334,20 +403,13 @@ export class Game {
       this.log(`  ↳ ${hit.name}: −${hit.damage} HP`, 'combat');
       if (hit.dead) {
         hit.monster.alive = false;
-        const levels = gainXp(this.hero, hit.monster.xp);
-        this.log(`${hit.name} повержен! +${hit.monster.xp} XP`, 'combat');
-        levels.forEach((lv) => this.log(`Уровень ${lv}! Сила растёт!`, 'info'));
-        this.tryRaiseMinion(hit.monster);
+        this.onMonsterSlain(hit.monster);
       }
     }
 
     if (result.monsterDead) {
       monster.alive = false;
-      const levels = gainXp(this.hero, monster.xp);
-      this.log(`${monster.name} повержен! +${monster.xp} XP`, 'combat');
-      levels.forEach((lv) => this.log(`Уровень ${lv}! Сила растёт!`, 'info'));
-      this.renderer.addParticle(monster.x, monster.y, '#ffd700', 30);
-      this.tryRaiseMinion(monster);
+      this.onMonsterSlain(monster);
     } else if (result.monsterDmg > 0) {
       this.log(`${monster.name} бьёт: −${result.monsterDmg} HP`, 'combat');
     }
@@ -362,6 +424,21 @@ export class Game {
       this.log('Поднят скелет-слуга!', 'info');
       this.renderer.addParticle(sk.x, sk.y, '#ccccaa', 25);
     }
+  }
+
+  onMonsterSlain(monster) {
+    const levels = gainXp(this.hero, monster.xp);
+    if (monster.isBoss) {
+      this.hero.gold += monster.goldReward ?? 0;
+      this.log(`${monster.name} повержен! Лестница открыта! +${monster.goldReward} золота`, 'boss');
+      this.renderer.shakeScreen(10);
+      this.renderer.addParticle(monster.x, monster.y, monster.color ?? '#ffd700', 45);
+    } else {
+      this.log(`${monster.name} повержен! +${monster.xp} XP`, 'combat');
+      this.renderer.addParticle(monster.x, monster.y, '#ffd700', 30);
+    }
+    levels.forEach((lv) => this.log(`Уровень ${lv}! Сила растёт!`, 'info'));
+    this.tryRaiseMinion(monster);
   }
 
   doLoot(item) {
@@ -395,6 +472,11 @@ export class Game {
   }
 
   descendStairs() {
+    if (this.isBossBlocking()) {
+      this.log('Лестница запечатана — победите босса!', 'boss');
+      return;
+    }
+
     const nextFloor = this.hero.floor + 1;
     this.log(`Лестница найдена! Спуск на этаж ${nextFloor}`, 'info');
     this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + 10);
@@ -412,10 +494,15 @@ export class Game {
     this.items = entities.items;
     this.traps = entities.traps;
     this.healers = entities.healers;
+    this.merchant = entities.merchant ?? null;
     this.minions = [];
     this.explored = new Set();
     this.currentPath = [];
     this.revealAroundHero();
+    const boss = getAliveBoss(this.monsters);
+    if (boss) {
+      this.log(`БОСС: ${boss.name} охраняет лестницу!`, 'boss');
+    }
     this.syncStats();
   }
 
@@ -441,6 +528,7 @@ export class Game {
       items: this.items,
       traps: this.traps,
       healers: this.healers,
+      merchant: this.merchant,
       minions: this.minions,
       explored: this.explored,
       visible: this.visible,
@@ -468,6 +556,7 @@ export class Game {
     this.items = [];
     this.traps = [];
     this.healers = [];
+    this.merchant = null;
     this.minions = [];
     this.currentPath = [];
     this.accumulator = 0;

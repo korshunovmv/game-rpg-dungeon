@@ -4,6 +4,8 @@ import { key, manhattan } from './utils.js';
 import { getAttackRange, getItemSearchRange, canDisarmTraps } from './classes.js';
 import { getDisarmableTrap } from './traps.js';
 import { isHealingItem, itemPriority } from './items.js';
+import { hasWorthwhilePurchase, merchantHasStock } from './merchant.js';
+import { getAliveBoss } from './bosses.js';
 
 const DIRS = [
   [0, -1], [1, 0], [0, 1], [-1, 0],
@@ -129,7 +131,7 @@ function findHealerPath(map, hx, hy, healers, blocked) {
   return null;
 }
 
-export function getExplorationTarget(map, hero, explored, monsters, items, rooms = [], traps = [], healers = []) {
+export function getExplorationTarget(map, hero, explored, monsters, items, rooms = [], traps = [], healers = [], merchant = null) {
   const { x: hx, y: hy } = hero;
   const attackRange = getAttackRange(hero);
   const itemRange = getItemSearchRange(hero);
@@ -137,6 +139,14 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
   const blocked = new Set(
     monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
   );
+
+  const boss = getAliveBoss(monsters);
+  if (boss) {
+    const bossDist = manhattan(hx, hy, boss.x, boss.y);
+    if (bossDist <= attackRange && (bossDist <= 1 || explored.has(key(boss.x, boss.y)))) {
+      return { type: 'fight', target: boss, distance: bossDist };
+    }
+  }
 
   const targetMonster = monsters
     .filter((m) => m.alive && manhattan(hx, hy, m.x, m.y) <= attackRange)
@@ -193,6 +203,19 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
     const healerPath = findHealerPath(map, hx, hy, healers, blocked);
     if (healerPath) {
       return { type: 'heal-move', path: healerPath.path, goal: healerPath.goal };
+    }
+  }
+
+  if (merchant && merchantHasStock(merchant)) {
+    if (merchant.x === hx && merchant.y === hy && hasWorthwhilePurchase(hero, merchant)) {
+      return { type: 'shop', target: merchant };
+    }
+
+    if (hero.gold >= 8 && hasWorthwhilePurchase(hero, merchant)) {
+      const path = findPath(map, hx, hy, merchant.x, merchant.y, blocked);
+      if (path?.length) {
+        return { type: 'merchant-move', path, goal: merchant };
+      }
     }
   }
 
@@ -259,12 +282,21 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
     }
   }
 
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      if (map[y][x] === 4) {
-        const path = findPath(map, hx, hy, x, y, blocked);
-        if (path?.length) {
-          return { type: 'stairs', path, goal: { x, y } };
+  if (boss) {
+    const path = findPath(map, hx, hy, boss.x, boss.y, blocked);
+    if (path?.length) {
+      return { type: 'move', path, goal: boss };
+    }
+  }
+
+  if (!boss) {
+    for (let y = 0; y < MAP_H; y++) {
+      for (let x = 0; x < MAP_W; x++) {
+        if (map[y][x] === 4) {
+          const path = findPath(map, hx, hy, x, y, blocked);
+          if (path?.length) {
+            return { type: 'stairs', path, goal: { x, y } };
+          }
         }
       }
     }
