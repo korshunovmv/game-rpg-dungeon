@@ -1,4 +1,4 @@
-import { randInt } from './utils.js';
+import { randInt, isMeleeAdjacent, manhattan } from './utils.js';
 import { getTotalDef } from './items.js';
 
 export const MONSTER_TYPES = {
@@ -93,26 +93,35 @@ export function getMonsterAttackRange(monster) {
   return monster.attackRange ?? 1;
 }
 
+export function canMonsterHitHero(monster, hero) {
+  if (isMeleeAdjacent(monster.x, monster.y, hero.x, hero.y)) {
+    return true;
+  }
+  if (!monster.ranged) return false;
+  return manhattan(monster.x, monster.y, hero.x, hero.y) <= getMonsterAttackRange(monster);
+}
+
 export function canMonsterAttackAtDistance(monster, distance) {
   if (distance <= 1) return true;
   return !!monster.ranged && distance <= getMonsterAttackRange(monster);
 }
 
-export function calcMonsterDamage(monster, hero, distance) {
-  if (!canMonsterAttackAtDistance(monster, distance)) return 0;
+export function calcMonsterDamage(monster, hero) {
+  if (!canMonsterHitHero(monster, hero)) return 0;
 
   const def = getTotalDef(hero) + (hero.magicShield ?? 0);
   const atk = Math.max(1, (monster.atk ?? 2) - (monster.curseAtkRed ?? 0));
+  const inMelee = isMeleeAdjacent(monster.x, monster.y, hero.x, hero.y);
 
-  if (distance <= 1) {
+  if (inMelee) {
     return Math.max(1, atk + randInt(-1, 1) - def);
   }
 
   return Math.max(1, atk + randInt(-1, 1) - Math.floor(def * 0.55));
 }
 
-export function applyMonsterAttack(hero, monster, distance) {
-  const dmg = calcMonsterDamage(monster, hero, distance);
+export function applyMonsterAttack(hero, monster) {
+  const dmg = calcMonsterDamage(monster, hero);
   if (dmg > 0) hero.hp -= dmg;
   return dmg;
 }
@@ -154,8 +163,9 @@ export function applyRangedTraits(monster, baseName) {
   return monster;
 }
 
-export function monsterSnipeRound(hero, monster, distance) {
-  const monsterDmg = applyMonsterAttack(hero, monster, distance);
+export function monsterSnipeRound(hero, monster) {
+  const monsterDmg = applyMonsterAttack(hero, monster);
+  const manh = manhattan(monster.x, monster.y, hero.x, hero.y);
   return {
     heroDmg: 0,
     monsterDmg,
@@ -164,5 +174,6 @@ export function monsterSnipeRound(hero, monster, distance) {
     attackLabel: '',
     ranged: true,
     monsterShot: true,
+    shotDistance: manh,
   };
 }

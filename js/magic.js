@@ -1,5 +1,5 @@
 import { randInt, manhattan } from './utils.js';
-import { calcMonsterDamage } from './monsters.js';
+import { calcMonsterDamage, canMonsterHitHero } from './monsters.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -110,9 +110,10 @@ function calcSpellDamage(hero, spell, monster) {
   return dmg;
 }
 
-function applyMonsterCounter(hero, monster, distance) {
+function applyMonsterCounter(hero, monster) {
   if (monster.hp <= 0) return 0;
-  return calcMonsterDamage(monster, hero, distance);
+  if (!canMonsterHitHero(monster, hero)) return 0;
+  return calcMonsterDamage(monster, hero);
 }
 
 export function mageCombatRound(hero, monster, monsters, distance = 1) {
@@ -136,7 +137,7 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
     const amount = Math.floor(hero.maxHp * spell.healPct) + randInt(2, 6);
     result.healed = Math.min(amount, hero.maxHp - hero.hp);
     hero.hp += result.healed;
-    result.monsterDmg = applyMonsterCounter(hero, monster, distance);
+    result.monsterDmg = applyMonsterCounter(hero, monster);
     hero.hp -= result.monsterDmg;
     result.heroDead = hero.hp <= 0;
     return result;
@@ -147,7 +148,7 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
     result.shielded = true;
     result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.4) + randInt(0, 2));
     monster.hp -= result.heroDmg;
-    result.monsterDmg = applyMonsterCounter(hero, monster, distance);
+    result.monsterDmg = applyMonsterCounter(hero, monster);
     hero.hp -= result.monsterDmg;
     result.monsterDead = monster.hp <= 0;
     result.heroDead = hero.hp <= 0;
@@ -176,7 +177,7 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
   if (monster.hp <= 0) monster.alive = false;
 
   if (monster.hp > 0) {
-    result.monsterDmg = applyMonsterCounter(hero, monster, distance);
+    result.monsterDmg = applyMonsterCounter(hero, monster);
     hero.hp -= result.monsterDmg;
   }
 

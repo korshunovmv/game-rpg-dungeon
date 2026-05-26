@@ -1,7 +1,7 @@
 import { MAP_W, MAP_H, MONSTER_VISION } from './config.js';
 import { TILES } from './config.js';
 import { isWalkable } from './dungeon.js';
-import { key, manhattan } from './utils.js';
+import { key, manhattan, chebyshev, isMeleeAdjacent } from './utils.js';
 import { getAttackRange, getItemSearchRange, canDisarmTraps } from './classes.js';
 import { getMonsterAttackRange } from './monsters.js';
 import { getDisarmableTrap } from './traps.js';
@@ -109,11 +109,30 @@ export function hasLineOfSight(map, x0, y0, x1, y1) {
   }
 }
 
-export function canAttackTarget(map, hx, hy, tx, ty, maxRange) {
-  const dist = manhattan(hx, hy, tx, ty);
+export function canAttackTarget(map, x0, y0, x1, y1, maxRange) {
+  if (maxRange <= 1) {
+    return isMeleeAdjacent(x0, y0, x1, y1);
+  }
+
+  const dist = manhattan(x0, y0, x1, y1);
   if (dist > maxRange) return false;
   if (dist <= 1) return true;
-  return hasLineOfSight(map, hx, hy, tx, ty);
+  return hasLineOfSight(map, x0, y0, x1, y1);
+}
+
+export function getHeroFightDistance(hero, target) {
+  const range = getAttackRange(hero);
+  if (range <= 1) {
+    return chebyshev(hero.x, hero.y, target.x, target.y);
+  }
+  return manhattan(hero.x, hero.y, target.x, target.y);
+}
+
+export function getMonsterFightDistance(monster, hero) {
+  if (isMeleeAdjacent(monster.x, monster.y, hero.x, hero.y)) {
+    return 1;
+  }
+  return manhattan(monster.x, monster.y, hero.x, hero.y);
 }
 
 export function getVisibleTiles(px, py, radius = 6) {
@@ -226,7 +245,7 @@ export function getExplorationTarget(map, hero, explored, monsters, items, rooms
 
   const targetMonster = monsters
     .filter((m) => m.alive && canAttackTarget(map, hx, hy, m.x, m.y, attackRange))
-    .map((m) => ({ monster: m, dist: manhattan(hx, hy, m.x, m.y) }))
+    .map((m) => ({ monster: m, dist: getHeroFightDistance(hero, m) }))
     .sort((a, b) => a.dist - b.dist)[0];
 
   if (targetMonster) {
@@ -420,14 +439,17 @@ export function canMonsterSeeHero(monster, hero) {
 }
 
 export function canMonsterAttackHero(map, monster, hero) {
-  return canAttackTarget(
-    map,
-    monster.x,
-    monster.y,
-    hero.x,
-    hero.y,
-    getMonsterAttackRange(monster)
-  );
+  const range = getMonsterAttackRange(monster);
+
+  if (isMeleeAdjacent(monster.x, monster.y, hero.x, hero.y)) {
+    return true;
+  }
+
+  if (!monster.ranged) return false;
+
+  const dist = manhattan(monster.x, monster.y, hero.x, hero.y);
+  if (dist > range) return false;
+  return hasLineOfSight(map, monster.x, monster.y, hero.x, hero.y);
 }
 
 export function moveMonstersTowardHero(map, hero, monsters) {
@@ -445,14 +467,15 @@ export function moveMonstersTowardHero(map, hero, monsters) {
       continue;
     }
 
-    const dist = manhattan(monster.x, monster.y, hero.x, hero.y);
+    const cheb = chebyshev(monster.x, monster.y, hero.x, hero.y);
+    const manh = manhattan(monster.x, monster.y, hero.x, hero.y);
 
     if (canMonsterAttackHero(map, monster, hero)) {
-      if (monster.ranged && dist > 1) {
-        return { monster, distance: dist };
+      if (monster.ranged && cheb > 1) {
+        return { monster, distance: manh };
       }
-      if (dist <= 1) {
-        return { monster, distance: dist };
+      if (cheb <= 1) {
+        return { monster, distance: 1 };
       }
     }
 
@@ -475,13 +498,14 @@ export function moveMonstersTowardHero(map, hero, monsters) {
     monster.y = next.y;
     occupied.add(nextKey);
 
-    const newDist = manhattan(monster.x, monster.y, hero.x, hero.y);
+    const newCheb = chebyshev(monster.x, monster.y, hero.x, hero.y);
+    const newManh = manhattan(monster.x, monster.y, hero.x, hero.y);
     if (canMonsterAttackHero(map, monster, hero)) {
-      if (monster.ranged && newDist > 1) {
-        return { monster, distance: newDist };
+      if (monster.ranged && newCheb > 1) {
+        return { monster, distance: newManh };
       }
-      if (newDist <= 1) {
-        return { monster, distance: newDist };
+      if (newCheb <= 1) {
+        return { monster, distance: 1 };
       }
     }
   }

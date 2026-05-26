@@ -1,7 +1,7 @@
-import { randInt } from './utils.js';
+import { randInt, chebyshev } from './utils.js';
 import { getProfession, getAttackRange } from './classes.js';
 import { getTotalAtk } from './items.js';
-import { applyMonsterAttack } from './monsters.js';
+import { applyMonsterAttack, canMonsterHitHero } from './monsters.js';
 import { mageCombatRound } from './magic.js';
 import { necromancerCombatRound } from './necromancy.js';
 import { rollLuck, luckCritBonus } from './luck.js';
@@ -74,10 +74,13 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
 
   const prof = getProfession(hero.profession);
   const heroRange = getAttackRange(hero);
+  const fightDist = heroRange <= 1
+    ? chebyshev(hero.x, hero.y, monster.x, monster.y)
+    : distance;
   let heroDmg = 0;
   let crit = false;
 
-  if (distance <= heroRange) {
+  if (fightDist <= heroRange) {
     heroDmg = Math.max(1, getTotalAtk(hero) + randInt(-1, 2) - randInt(0, 1));
     if (prof.magicBonus) {
       heroDmg += prof.magicBonus + randInt(0, 2);
@@ -89,8 +92,8 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
   }
 
   let monsterDmg = 0;
-  if (monster.hp > 0) {
-    monsterDmg = applyMonsterAttack(hero, monster, distance);
+  if (monster.hp > 0 && canMonsterHitHero(monster, hero)) {
+    monsterDmg = applyMonsterAttack(hero, monster);
   }
 
   return {
@@ -99,7 +102,7 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
     monsterDead: monster.hp <= 0,
     heroDead: hero.hp <= 0,
     attackLabel: prof.attackLabel,
-    ranged: distance > 1,
+    ranged: heroRange > 1 && fightDist > 1,
     crit,
   };
 }

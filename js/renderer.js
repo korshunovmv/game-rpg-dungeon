@@ -1,6 +1,6 @@
 import { TILE, MAP_W, MAP_H, COLORS, TILES } from './config.js';
 import { key } from './utils.js';
-import { drawHeroSprite, drawHeroDeath } from './sprites.js';
+import { drawHeroSprite, drawHeroDeath, drawLootWeapon, drawLootArmor } from './sprites.js';
 import { TRAP_TYPES } from './traps.js';
 import {
   getDungeonTheme,
@@ -278,19 +278,12 @@ export class Renderer {
     }
 
     if (item.type === 'weapon') {
-      ctx.fillStyle = item.color ?? '#cccccc';
-      ctx.fillRect(sx + 4, sy + 5 + bob, 2, 8);
-      ctx.fillRect(sx + 3, sy + 4 + bob, 4, 2);
-      ctx.fillRect(sx + 6, sy + 7 + bob, 6, 2);
+      drawLootWeapon(ctx, sx, sy, item, bob);
       return;
     }
 
     if (item.type === 'armor') {
-      ctx.fillStyle = item.color ?? '#888899';
-      ctx.fillRect(sx + 4, sy + 5 + bob, 8, 7);
-      ctx.fillRect(sx + 5, sy + 4 + bob, 6, 2);
-      ctx.fillStyle = '#ffffff44';
-      ctx.fillRect(sx + 6, sy + 7 + bob, 4, 3);
+      drawLootArmor(ctx, sx, sy, item, bob);
       return;
     }
 

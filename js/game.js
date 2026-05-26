@@ -1,8 +1,8 @@
 import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
-import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero } from './ai.js';
-import { key } from './utils.js';
+import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance } from './ai.js';
+import { key, isMeleeAdjacent } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
 import { getTrapAt, triggerTrap, tickPoison, disarmTrap, revealTrapsForThief } from './traps.js';
@@ -652,13 +652,15 @@ export class Game {
       heroRange
     );
     const monsterCanAttack = canMonsterAttackHero(this.map, monster, this.hero);
+    const fightDist = getHeroFightDistance(this.hero, monster);
+    const monsterShotDist = getMonsterFightDistance(monster, this.hero);
 
     if (!heroCanAttack && !monsterCanAttack) return;
     if (!monsterInitiated && !heroCanAttack) return;
 
     const result = heroCanAttack
-      ? combatRound(this.hero, monster, distance, this.monsters)
-      : monsterSnipeRound(this.hero, monster, distance);
+      ? combatRound(this.hero, monster, fightDist, this.monsters)
+      : monsterSnipeRound(this.hero, monster);
 
     this.lastCombatMonster = monster;
     trackCombatRound(monster, this.hero, result.monsterDmg ?? 0);
@@ -691,7 +693,12 @@ export class Game {
         );
       }
     };
-    if (result.monsterDmg > 0 && distance > 1 && monster.ranged) {
+    if (result.monsterDmg > 0 && monsterShotDist > 1 && monster.ranged && !isMeleeAdjacent(
+      monster.x,
+      monster.y,
+      this.hero.x,
+      this.hero.y
+    )) {
       this.renderer.addProjectile(
         monster.x,
         monster.y,
@@ -704,7 +711,12 @@ export class Game {
     }
 
     if (monsterInitiated) {
-      if (distance > 1 && monster.ranged) {
+      if (monsterShotDist > 1 && monster.ranged && !isMeleeAdjacent(
+        monster.x,
+        monster.y,
+        this.hero.x,
+        this.hero.y
+      )) {
         this.log(`${monster.name} стреляет!`, 'combat');
       } else {
         this.log(`${monster.name} нападает!`, 'combat');
@@ -747,7 +759,10 @@ export class Game {
       monster.alive = false;
       this.onMonsterSlain(monster);
     } else if (result.monsterDmg > 0) {
-      const shotNote = distance > 1 && monster.ranged ? ' (дист.)' : '';
+      const shotNote = monsterShotDist > 1 && monster.ranged
+        && !isMeleeAdjacent(monster.x, monster.y, this.hero.x, this.hero.y)
+        ? ' (дист.)'
+        : '';
       this.log(`${monster.name} бьёт${shotNote}: −${result.monsterDmg} HP`, 'combat');
     }
 

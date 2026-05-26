@@ -167,3 +167,183 @@ export function drawClassPreview(canvas, profession) {
   drawHeroSprite(ctx, 0, 0, profession, 'down', 0);
   ctx.restore();
 }
+
+function lootPx(ctx, sx, sy, x, y, w, h, color, bob = 0) {
+  ctx.fillStyle = color;
+  ctx.fillRect(sx + x, sy + y + bob, w, h);
+}
+
+function resolveWeaponSpriteId(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('кинжал')) return 'dagger';
+  if (n.includes('топор')) return 'axe';
+  if (n.includes('булав')) return 'mace';
+  if (n.includes('лук')) return 'bow';
+  if (n.includes('посох')) return 'staff';
+  if (n.includes('меч')) return 'sword';
+  return 'sword';
+}
+
+function resolveArmorSpriteId(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('кольчуг')) return 'chain';
+  if (n.includes('лат')) return 'plate';
+  if (n.includes('манти')) return 'robe';
+  if (n.includes('шкур')) return 'hide';
+  if (n.includes('кожан')) return 'leather';
+  return 'leather';
+}
+
+function drawRareGlow(ctx, sx, sy, bob) {
+  lootPx(ctx, sx, sy, 2, 3, 2, 2, '#ffcc44', bob);
+  lootPx(ctx, sx, sy, 12, 4, 2, 2, '#ffcc44', bob);
+  lootPx(ctx, sx, sy, 11, 11, 2, 2, '#ffaa22', bob);
+}
+
+function drawWeaponDagger(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 7, 11, 2, 3, '#553322', bob);
+  lootPx(ctx, sx, sy, 6, 10, 4, 2, '#664422', bob);
+  lootPx(ctx, sx, sy, 8, 4, 2, 6, color, bob);
+  lootPx(ctx, sx, sy, 7, 3, 4, 2, '#eeeeee', bob);
+  lootPx(ctx, sx, sy, 8, 2, 2, 2, '#ffffff', bob);
+}
+
+function drawWeaponSword(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 7, 12, 2, 3, '#553322', bob);
+  lootPx(ctx, sx, sy, 5, 9, 6, 2, '#888888', bob);
+  lootPx(ctx, sx, sy, 6, 10, 4, 1, '#aaaaaa', bob);
+  lootPx(ctx, sx, sy, 7, 2, 2, 8, color, bob);
+  lootPx(ctx, sx, sy, 6, 1, 4, 2, '#eeeeee', bob);
+  lootPx(ctx, sx, sy, 7, 0, 2, 2, '#ffffff', bob);
+}
+
+function drawWeaponAxe(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 7, 5, 2, 9, '#664422', bob);
+  lootPx(ctx, sx, sy, 6, 12, 4, 2, '#553311', bob);
+  lootPx(ctx, sx, sy, 9, 2, 4, 6, color, bob);
+  lootPx(ctx, sx, sy, 10, 3, 2, 4, '#aaaaaa', bob);
+  lootPx(ctx, sx, sy, 8, 1, 2, 2, '#cccccc', bob);
+}
+
+function drawWeaponMace(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 7, 8, 2, 6, '#553322', bob);
+  lootPx(ctx, sx, sy, 6, 13, 4, 2, '#443322', bob);
+  lootPx(ctx, sx, sy, 5, 2, 6, 6, color, bob);
+  lootPx(ctx, sx, sy, 6, 3, 4, 4, '#777777', bob);
+  lootPx(ctx, sx, sy, 5, 1, 2, 2, '#aaaaaa', bob);
+  lootPx(ctx, sx, sy, 9, 1, 2, 2, '#aaaaaa', bob);
+  lootPx(ctx, sx, sy, 7, 4, 2, 2, '#999999', bob);
+}
+
+function drawWeaponBow(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 4, 4, 2, 9, color, bob);
+  lootPx(ctx, sx, sy, 10, 4, 2, 9, color, bob);
+  lootPx(ctx, sx, sy, 5, 3, 1, 1, '#886633', bob);
+  lootPx(ctx, sx, sy, 10, 3, 1, 1, '#886633', bob);
+  lootPx(ctx, sx, sy, 5, 12, 1, 1, '#886633', bob);
+  lootPx(ctx, sx, sy, 10, 12, 1, 1, '#886633', bob);
+  lootPx(ctx, sx, sy, 6, 4, 4, 9, '#cccccc', bob);
+  lootPx(ctx, sx, sy, 7, 7, 2, 1, '#ffffaa', bob);
+}
+
+function drawWeaponStaff(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 7, 5, 2, 10, '#664422', bob);
+  lootPx(ctx, sx, sy, 6, 14, 4, 1, '#553311', bob);
+  lootPx(ctx, sx, sy, 5, 1, 6, 4, color, bob);
+  lootPx(ctx, sx, sy, 6, 2, 4, 2, '#aa88ff', bob);
+  lootPx(ctx, sx, sy, 7, 0, 2, 2, '#ffffff', bob);
+  lootPx(ctx, sx, sy, 5, 4, 1, 1, '#ddccff', bob);
+  lootPx(ctx, sx, sy, 10, 4, 1, 1, '#ddccff', bob);
+}
+
+const WEAPON_DRAWERS = {
+  dagger: drawWeaponDagger,
+  sword: drawWeaponSword,
+  axe: drawWeaponAxe,
+  mace: drawWeaponMace,
+  bow: drawWeaponBow,
+  staff: drawWeaponStaff,
+};
+
+function drawArmorLeather(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 4, 5, 8, 7, color, bob);
+  lootPx(ctx, sx, sy, 5, 4, 6, 2, '#996644', bob);
+  lootPx(ctx, sx, sy, 3, 6, 2, 5, '#775533', bob);
+  lootPx(ctx, sx, sy, 11, 6, 2, 5, '#775533', bob);
+  lootPx(ctx, sx, sy, 6, 7, 1, 4, '#553322', bob);
+  lootPx(ctx, sx, sy, 9, 7, 1, 4, '#553322', bob);
+  lootPx(ctx, sx, sy, 6, 9, 4, 1, '#aa8866', bob);
+}
+
+function drawArmorChain(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 4, 5, 8, 7, color, bob);
+  lootPx(ctx, sx, sy, 3, 5, 2, 6, '#666677', bob);
+  lootPx(ctx, sx, sy, 11, 5, 2, 6, '#666677', bob);
+  lootPx(ctx, sx, sy, 5, 4, 6, 2, '#9999aa', bob);
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      lootPx(ctx, sx, sy, 5 + col * 2 + (row % 2), 6 + row * 2, 1, 1, '#ccccdd', bob);
+    }
+  }
+  lootPx(ctx, sx, sy, 7, 8, 2, 2, '#ffffff44', bob);
+}
+
+function drawArmorPlate(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 4, 6, 8, 6, color, bob);
+  lootPx(ctx, sx, sy, 3, 5, 2, 3, '#888899', bob);
+  lootPx(ctx, sx, sy, 11, 5, 2, 3, '#888899', bob);
+  lootPx(ctx, sx, sy, 5, 4, 6, 2, '#bbbccc', bob);
+  lootPx(ctx, sx, sy, 6, 5, 4, 4, '#ddddee', bob);
+  lootPx(ctx, sx, sy, 7, 6, 2, 3, '#ffffff66', bob);
+  lootPx(ctx, sx, sy, 6, 10, 4, 1, '#666677', bob);
+}
+
+function drawArmorRobe(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 4, 6, 8, 7, color, bob);
+  lootPx(ctx, sx, sy, 5, 3, 6, 4, '#553388', bob);
+  lootPx(ctx, sx, sy, 6, 2, 4, 2, color, bob);
+  lootPx(ctx, sx, sy, 3, 7, 2, 6, '#442266', bob);
+  lootPx(ctx, sx, sy, 11, 7, 2, 6, '#442266', bob);
+  lootPx(ctx, sx, sy, 5, 8, 6, 1, '#8866cc', bob);
+  lootPx(ctx, sx, sy, 7, 4, 2, 2, '#aa88ff', bob);
+}
+
+function drawArmorHide(ctx, sx, sy, color, bob) {
+  lootPx(ctx, sx, sy, 4, 6, 8, 6, color, bob);
+  lootPx(ctx, sx, sy, 5, 5, 6, 2, '#996644', bob);
+  lootPx(ctx, sx, sy, 3, 7, 2, 4, '#664422', bob);
+  lootPx(ctx, sx, sy, 11, 7, 2, 4, '#664422', bob);
+  lootPx(ctx, sx, sy, 5, 7, 2, 1, '#bb9977', bob);
+  lootPx(ctx, sx, sy, 9, 8, 2, 1, '#bb9977', bob);
+  lootPx(ctx, sx, sy, 7, 9, 2, 2, '#886655', bob);
+}
+
+const ARMOR_DRAWERS = {
+  leather: drawArmorLeather,
+  chain: drawArmorChain,
+  plate: drawArmorPlate,
+  robe: drawArmorRobe,
+  hide: drawArmorHide,
+};
+
+export function drawLootWeapon(ctx, sx, sy, item, bob = 0) {
+  const id = item.spriteId ?? resolveWeaponSpriteId(item.name);
+  const color = item.color ?? '#cccccc';
+  const draw = WEAPON_DRAWERS[id] ?? drawWeaponSword;
+  lootPx(ctx, sx, sy, 4, 13, 8, 1, '#111122', bob);
+  draw(ctx, sx, sy, color, bob);
+  if (item.rare || (item.name ?? '').toLowerCase().includes('редк')) {
+    drawRareGlow(ctx, sx, sy, bob);
+  }
+}
+
+export function drawLootArmor(ctx, sx, sy, item, bob = 0) {
+  const id = item.spriteId ?? resolveArmorSpriteId(item.name);
+  const color = item.color ?? '#888899';
+  const draw = ARMOR_DRAWERS[id] ?? drawArmorLeather;
+  lootPx(ctx, sx, sy, 4, 13, 8, 1, '#111122', bob);
+  draw(ctx, sx, sy, color, bob);
+  if (item.rare || (item.name ?? '').toLowerCase().includes('редк')) {
+    drawRareGlow(ctx, sx, sy, bob);
+  }
+}

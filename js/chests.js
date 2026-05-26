@@ -33,6 +33,7 @@ function createRareChestLoot(floor, luck = 5) {
     weapon.name = `Редкий ${weapon.name.toLowerCase()}`;
     return {
       type: 'weapon',
+      spriteId: weapon.id,
       name: weapon.name,
       atk: weapon.atk,
       color: weapon.color ?? '#ffd700',
@@ -47,6 +48,7 @@ function createRareChestLoot(floor, luck = 5) {
   armor.name = `Редкая ${armor.name.toLowerCase()}`;
   return {
     type: 'armor',
+    spriteId: armor.id,
     name: armor.name,
     def: armor.def,
     hp: armor.hp ?? 0,

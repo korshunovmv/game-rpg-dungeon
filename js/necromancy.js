@@ -2,7 +2,7 @@ import { randInt, manhattan, key } from './utils.js';
 import { isWalkable } from './dungeon.js';
 import { getProfession } from './classes.js';
 import { getLuck, rollLuck } from './luck.js';
-import { calcMonsterDamage } from './monsters.js';
+import { calcMonsterDamage, canMonsterHitHero } from './monsters.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -105,9 +105,10 @@ function chooseNecroSpell(hero, monster, monsters, distance) {
   return NECRO_SPELLS.deathBolt;
 }
 
-function applyCounter(hero, monster, distance) {
+function applyCounter(hero, monster) {
   if (monster.hp <= 0) return 0;
-  return calcMonsterDamage(monster, hero, distance);
+  if (!canMonsterHitHero(monster, hero)) return 0;
+  return calcMonsterDamage(monster, hero);
 }
 
 export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
@@ -133,7 +134,7 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
     result.shielded = true;
     result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.5) + randInt(0, 2));
     monster.hp -= result.heroDmg;
-    result.monsterDmg = applyCounter(hero, monster, distance);
+    result.monsterDmg = applyCounter(hero, monster);
     hero.hp -= result.monsterDmg;
     result.monsterDead = monster.hp <= 0;
     result.heroDead = hero.hp <= 0;
@@ -170,7 +171,7 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
   if (monster.hp <= 0) monster.alive = false;
 
   if (monster.hp > 0) {
-    result.monsterDmg = applyCounter(hero, monster, distance);
+    result.monsterDmg = applyCounter(hero, monster);
     hero.hp -= result.monsterDmg;
   }
 

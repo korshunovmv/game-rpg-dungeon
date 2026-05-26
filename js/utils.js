@@ -48,6 +48,14 @@ export function manhattan(ax, ay, bx, by) {
   return Math.abs(ax - bx) + Math.abs(ay - by);
 }
 
+export function chebyshev(ax, ay, bx, by) {
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+}
+
+export function isMeleeAdjacent(ax, ay, bx, by) {
+  return chebyshev(ax, ay, bx, by) <= 1;
+}
+
 export function inBounds(x, y, w, h) {
   return x >= 0 && y >= 0 && x < w && y < h;
 }
