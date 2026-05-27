@@ -1,7 +1,7 @@
 import { randInt, shuffle, manhattan } from './utils.js';
 import { isWalkable } from './dungeon.js';
 import { WEAPONS, ARMORS, POTIONS, collectItem } from './items.js';
-import { canHeroEquipWeapon } from './classes.js';
+import { canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 import { buildWeapon, buildArmor, rarityPriorityBonus } from './rarity.js';
 
 const MIMIC_CHANCE = 0.28;
@@ -148,6 +148,7 @@ export function chestPriority(chest, hero) {
     return 920 + (gain > 0 ? gain * 12 : 0) + rarityPriorityBonus(loot);
   }
   if (loot.type === 'armor') {
+    if (!canHeroEquipArmor(hero, loot)) return 700;
     const cur = (hero.armor?.def ?? 0) * 2 + (hero.armor?.hp ?? 0);
     const next = loot.def * 2 + (loot.hp ?? 0);
     return 910 + (next > cur ? (next - cur) * 10 : 0) + rarityPriorityBonus(loot);

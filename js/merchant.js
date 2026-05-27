@@ -1,7 +1,7 @@
 import { randInt, shuffle } from './utils.js';
 import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS } from './items.js';
 import { luckMerchantChance } from './luck.js';
-import { canHeroEquipWeapon } from './classes.js';
+import { canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 import { buildWeapon, buildArmor, getRarityDef, getItemRarity } from './rarity.js';
 
 const MERCHANT_NAMES = ['Странник', 'Купец', 'Бродячий торговец'];
@@ -185,6 +185,7 @@ export function shopItemScore(item, hero) {
   }
 
   if (item.type === 'armor') {
+    if (!canHeroEquipArmor(hero, item)) return 0;
     const gain = armorScore(item) - armorScore(hero.armor);
     if (gain <= 0) return 0;
     return (gain * 10) / item.price;

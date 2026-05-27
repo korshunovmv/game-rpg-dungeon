@@ -1,7 +1,7 @@
 import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
-import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep, findUnstickStep, getHeroBlockedSet } from './ai.js';
+import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, wanderIdleMonsters, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep, findUnstickStep, getHeroBlockedSet } from './ai.js';
 import { key, isMeleeAdjacent } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
@@ -315,6 +315,8 @@ export class Game {
       const label = formatRarityLabel(result.rarity);
       if (result.equipped) {
         this.log(`Экипировано: ${label}${result.name} (+${result.def} DEF)`, 'loot');
+      } else if (result.unusable) {
+        this.log(`${label}${result.name} не подходит классу, продано`, 'loot');
       } else {
         this.log(`${label}${result.name} продан`, 'loot');
       }
@@ -597,7 +599,15 @@ export class Game {
     this.tryUseConsumables();
     this.syncStats();
 
-    const attack = moveMonstersTowardHero(this.map, this.hero, this.monsters);
+    const hunterAttack = moveMonstersTowardHero(this.map, this.hero, this.monsters);
+    const wanderAttack = wanderIdleMonsters(
+      this.map,
+      this.hero,
+      this.monsters,
+      this.minions,
+      !hunterAttack
+    );
+    const attack = hunterAttack || wanderAttack;
     if (attack) {
       const meleeEngaged = isMeleeAdjacent(
         attack.monster.x,

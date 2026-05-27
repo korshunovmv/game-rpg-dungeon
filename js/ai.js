@@ -1,4 +1,4 @@
-import { MAP_W, MAP_H, MONSTER_VISION } from './config.js';
+import { MAP_W, MAP_H, MONSTER_VISION, MONSTER_WANDER_CHANCE } from './config.js';
 import { TILES } from './config.js';
 import { isWalkable } from './dungeon.js';
 import { key, manhattan, chebyshev, isMeleeAdjacent } from './utils.js';
@@ -800,6 +800,60 @@ export function moveMonstersTowardHero(map, hero, monsters) {
         return { monster, distance: newManh };
       }
       if (newCheb <= 1) {
+        return { monster, distance: 1 };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function wanderIdleMonsters(map, hero, monsters, minions = [], checkCombat = true) {
+  const occupied = new Set(
+    monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
+  );
+  occupied.add(key(hero.x, hero.y));
+  for (const minion of minions) {
+    if (minion.alive) occupied.add(key(minion.x, minion.y));
+  }
+
+  const idle = monsters.filter(
+    (m) =>
+      m.alive &&
+      !canMonsterSeeHero(m, hero) &&
+      !m.isBoss &&
+      !m.isMimic &&
+      (m.slowed ?? 0) <= 0
+  );
+
+  for (let i = idle.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idle[i], idle[j]] = [idle[j], idle[i]];
+  }
+
+  for (const monster of idle) {
+    if (Math.random() > MONSTER_WANDER_CHANCE) continue;
+
+    const blocked = new Set(occupied);
+    blocked.delete(key(monster.x, monster.y));
+
+    const step = wanderStep(map, monster.x, monster.y, blocked);
+    if (!step) continue;
+
+    occupied.delete(key(monster.x, monster.y));
+    monster.x = step.x;
+    monster.y = step.y;
+    occupied.add(key(step.x, step.y));
+
+    if (!checkCombat) continue;
+
+    if (canMonsterSeeHero(monster, hero) && canMonsterAttackHero(map, monster, hero)) {
+      const manh = manhattan(monster.x, monster.y, hero.x, hero.y);
+      const cheb = chebyshev(monster.x, monster.y, hero.x, hero.y);
+      if (monster.ranged && cheb > 1) {
+        return { monster, distance: manh };
+      }
+      if (cheb <= 1) {
         return { monster, distance: 1 };
       }
     }

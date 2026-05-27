@@ -113,6 +113,14 @@ export const PROFESSION_WEAPON_TYPES = {
   necromancer: ['staff'],
 };
 
+export const PROFESSION_ARMOR_TYPES = {
+  warrior: ['leather', 'chain', 'plate'],
+  archer: ['leather', 'hide'],
+  mage: ['robe'],
+  thief: ['leather', 'hide'],
+  necromancer: ['robe', 'leather'],
+};
+
 function weaponNameToType(name = '') {
   const n = name.toLowerCase();
   if (n.includes('кинжал')) return 'dagger';
@@ -134,5 +142,28 @@ export function canHeroEquipWeapon(hero, weapon) {
   const type = getWeaponType(weapon);
   if (!type) return false;
   const allowed = PROFESSION_WEAPON_TYPES[hero.profession] ?? PROFESSION_WEAPON_TYPES.warrior;
+  return allowed.includes(type);
+}
+
+function armorNameToType(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('кожан')) return 'leather';
+  if (n.includes('кольчуг')) return 'chain';
+  if (n.includes('лат')) return 'plate';
+  if (n.includes('манти')) return 'robe';
+  if (n.includes('шкур')) return 'hide';
+  return null;
+}
+
+export function getArmorType(armor) {
+  if (!armor) return null;
+  if (armor.spriteId) return armor.spriteId;
+  return armorNameToType(armor.name);
+}
+
+export function canHeroEquipArmor(hero, armor) {
+  const type = getArmorType(armor);
+  if (!type) return false;
+  const allowed = PROFESSION_ARMOR_TYPES[hero.profession] ?? PROFESSION_ARMOR_TYPES.warrior;
   return allowed.includes(type);
 }

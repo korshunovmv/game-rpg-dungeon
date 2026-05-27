@@ -4,7 +4,7 @@ import { manhattan } from './utils.js';
 import { getSkillDef, initHeroSkills, applySkillBonuses } from './skills.js';
 import { recalcMaxHp } from './items.js';
 import { resolveWeaponSpriteId, resolveArmorSpriteId } from './sprites.js';
-import { canHeroEquipWeapon } from './classes.js';
+import { canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 
 const STORAGE_KEY = 'dungeon_legacies';
 const MAX_LEGACIES = 8;
@@ -263,13 +263,24 @@ export function collectLegacyGrave(hero, item) {
   }
 
   if (gift.kind === 'armor') {
-    equipLegacyArmor(hero, gift);
+    if (canHeroEquipArmor(hero, gift)) {
+      equipLegacyArmor(hero, gift);
+      return {
+        type: 'legacy_armor',
+        name: gift.name,
+        def: gift.def,
+        heroName: item.heroName,
+        equipped: true,
+      };
+    }
+
+    const value = 10 + gift.def * 5 + (gift.hp ?? 0);
+    hero.gold += value;
     return {
-      type: 'legacy_armor',
-      name: gift.name,
-      def: gift.def,
+      type: 'legacy_gold',
+      value,
       heroName: item.heroName,
-      equipped: true,
+      unusableArmor: gift.name,
     };
   }
 

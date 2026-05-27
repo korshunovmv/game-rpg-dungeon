@@ -1,5 +1,5 @@
 import { randInt, shuffle } from './utils.js';
-import { getProfession, canHeroEquipWeapon } from './classes.js';
+import { getProfession, canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 import { applyLuckLootWeights, luckGoldBonus } from './luck.js';
 import { collectLegacyGrave } from './legacy.js';
 import { resolveWeaponSpriteId, resolveArmorSpriteId } from './sprites.js';
@@ -217,6 +217,8 @@ function equipWeapon(hero, weapon) {
 }
 
 function equipArmor(hero, armor) {
+  if (!canHeroEquipArmor(hero, armor)) return false;
+
   hero.armor = {
     name: armor.name,
     def: armor.def,
@@ -227,6 +229,7 @@ function equipArmor(hero, armor) {
     rarity: getItemRarity(armor),
   };
   recalcMaxHp(hero);
+  return true;
 }
 
 function weaponScore(w) {
@@ -330,6 +333,8 @@ export function purchaseFromMerchant(hero, item) {
   }
 
   if (item.type === 'armor') {
+    if (!canHeroEquipArmor(hero, item)) return null;
+
     if (equipArmor(hero, item)) {
       return {
         type: 'armor',
@@ -422,6 +427,18 @@ export function collectItem(hero, item) {
   }
 
   if (item.type === 'armor') {
+    if (!canHeroEquipArmor(hero, item)) {
+      hero.gold += getEquipSellValue(item);
+      return {
+        type: 'armor',
+        name: item.name,
+        def: item.def,
+        rarity: getItemRarity(item),
+        equipped: false,
+        unusable: true,
+      };
+    }
+
     const newA = {
       name: item.name,
       def: item.def,
@@ -492,6 +509,7 @@ export function itemPriority(item, hero) {
     return gain > 0 ? gain * 10 + bonus : 1 + bonus * 0.1;
   }
   if (item.type === 'armor') {
+    if (!canHeroEquipArmor(hero, item)) return 0;
     const cur = armorScore(hero.armor);
     const next = armorScore(item);
     const bonus = rarityPriorityBonus(item);

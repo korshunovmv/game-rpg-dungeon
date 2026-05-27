@@ -36,3 +36,4 @@ export const GAME_SPEED = {
 };
 
 export const MONSTER_VISION = 5;
+export const MONSTER_WANDER_CHANCE = 0.4;
