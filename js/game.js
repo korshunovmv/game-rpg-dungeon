@@ -755,7 +755,9 @@ export class Game {
         return;
       }
 
-      const occupied = getHeroBlockedSet(this.hero, this.monsters, this.minions);
+      const occupied = getHeroBlockedSet(this.hero, this.monsters, this.minions, {
+        blockMinions: false,
+      });
       occupied.delete(key(this.hero.x, this.hero.y));
       if (!canStep(this.map, this.hero.x, this.hero.y, next.x, next.y, occupied)) {
         this.currentPath = [];
@@ -768,7 +770,9 @@ export class Game {
       }
     }
 
-    const wanderBlocked = getHeroBlockedSet(this.hero, this.monsters, this.minions);
+    const wanderBlocked = getHeroBlockedSet(this.hero, this.monsters, this.minions, {
+      blockMinions: false,
+    });
     wanderBlocked.delete(key(this.hero.x, this.hero.y));
 
     const shouldForceUnstick = this.stuckTicks >= 2

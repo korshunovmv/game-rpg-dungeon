@@ -11,14 +11,17 @@ import { getAliveBoss } from './bosses.js';
 import { chestPriority, isUnopenedChest } from './chests.js';
 import { getHeroVision } from './skills.js';
 
-export function getHeroBlockedSet(hero, monsters, minions = []) {
+export function getHeroBlockedSet(hero, monsters, minions = [], options = {}) {
+  const { blockMinions = true } = options;
   const blocked = new Set();
   if (hero) blocked.add(key(hero.x, hero.y));
   for (const monster of monsters) {
     if (monster.alive) blocked.add(key(monster.x, monster.y));
   }
-  for (const minion of minions) {
-    if (minion.alive) blocked.add(key(minion.x, minion.y));
+  if (blockMinions) {
+    for (const minion of minions) {
+      if (minion.alive) blocked.add(key(minion.x, minion.y));
+    }
   }
   return blocked;
 }
@@ -587,9 +590,6 @@ export function getExplorationTarget(
   const blocked = new Set(
     monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
   );
-  for (const minion of minions) {
-    if (minion.alive) blocked.add(key(minion.x, minion.y));
-  }
 
   const boss = getAliveBoss(monsters);
   if (boss && isMonsterKnown(boss, explored, visible, hero)) {
