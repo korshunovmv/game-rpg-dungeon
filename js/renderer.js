@@ -486,16 +486,62 @@ export class Renderer {
     const { sx, sy } = this.worldToScreen(minion.x, minion.y, camX, camY);
     const ctx = this.ctx;
     const wobble = Math.sin(frame / 6 + minion.x) * 0.5;
+    const y = sy + wobble;
+    const pulse = Math.sin(frame / 9 + minion.y) * 0.5;
 
-    ctx.fillStyle = '#ccccaa';
-    ctx.fillRect(sx + 4, sy + 3 + wobble, 2, 3);
-    ctx.fillRect(sx + 10, sy + 3 + wobble, 2, 3);
-    ctx.fillRect(sx + 5, sy + 5 + wobble, 6, 7);
-    ctx.fillRect(sx + 3, sy + 8 + wobble, 3, 4);
-    ctx.fillRect(sx + 10, sy + 8 + wobble, 3, 4);
-    ctx.fillStyle = '#88ff44';
-    ctx.fillRect(sx + 5, sy + 4 + wobble, 2, 2);
-    ctx.fillRect(sx + 9, sy + 4 + wobble, 2, 2);
+    // Ground shadow
+    ctx.fillStyle = '#0b0b12';
+    ctx.fillRect(sx + 4, y + 14, 8, 1);
+    ctx.fillStyle = '#191926';
+    ctx.fillRect(sx + 6, y + 13, 4, 1);
+
+    // Skull and jaw
+    ctx.fillStyle = '#d9d7bf';
+    ctx.fillRect(sx + 5, y + 2, 6, 4);
+    ctx.fillRect(sx + 6, y + 6, 4, 2);
+    ctx.fillStyle = '#b8b59f';
+    ctx.fillRect(sx + 5, y + 2, 6, 1);
+    ctx.fillRect(sx + 5, y + 5, 1, 2);
+    ctx.fillRect(sx + 10, y + 5, 1, 2);
+    ctx.fillStyle = '#8f8c79';
+    ctx.fillRect(sx + 7, y + 7, 2, 1);
+
+    // Ribcage and spine
+    ctx.fillStyle = '#cecbb2';
+    ctx.fillRect(sx + 5, y + 8, 6, 4);
+    ctx.fillRect(sx + 7, y + 6, 2, 7);
+    ctx.fillStyle = '#a8a58f';
+    ctx.fillRect(sx + 5, y + 9, 6, 1);
+    ctx.fillRect(sx + 5, y + 11, 6, 1);
+    ctx.fillRect(sx + 6, y + 8, 1, 4);
+    ctx.fillRect(sx + 9, y + 8, 1, 4);
+
+    // Arms and legs
+    ctx.fillStyle = '#bdb99f';
+    ctx.fillRect(sx + 3, y + 8, 2, 4);
+    ctx.fillRect(sx + 11, y + 8, 2, 4);
+    ctx.fillRect(sx + 5, y + 12, 2, 2);
+    ctx.fillRect(sx + 9, y + 12, 2, 2);
+    ctx.fillStyle = '#8a866f';
+    ctx.fillRect(sx + 3, y + 11, 2, 1);
+    ctx.fillRect(sx + 11, y + 11, 2, 1);
+    ctx.fillRect(sx + 5, y + 13, 2, 1);
+    ctx.fillRect(sx + 9, y + 13, 2, 1);
+
+    // Bone ward glyph
+    ctx.fillStyle = '#6e4c3a';
+    ctx.fillRect(sx + 6, y + 9, 4, 2);
+    ctx.fillStyle = '#d7b88a';
+    ctx.fillRect(sx + 7, y + 9, 2, 1);
+    ctx.fillRect(sx + 7, y + 10, 1, 1);
+
+    // Necromantic eyes
+    ctx.fillStyle = '#6dff7c';
+    ctx.fillRect(sx + 6, y + 4, 1, 1);
+    ctx.fillRect(sx + 9, y + 4, 1, 1);
+    ctx.fillStyle = '#caffcc';
+    ctx.fillRect(sx + 6, y + 4 + pulse, 1, 1);
+    ctx.fillRect(sx + 9, y + 4 + pulse, 1, 1);
   }
 
   drawHero(hero, camX, camY, frame) {
