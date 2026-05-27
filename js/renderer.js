@@ -2,6 +2,7 @@ import { getHealFlaskCount, getManaFlaskCount } from './items.js';
 import { COLORS, TILE, MAP_W, MAP_H, TILES } from './config.js';
 import { key } from './utils.js';
 import { drawHeroSprite, drawHeroDeath, drawLootWeapon, drawLootArmor } from './sprites.js';
+import { drawMonsterSprite } from './monsterSprites.js';
 import { TRAP_TYPES } from './traps.js';
 import {
   getDungeonTheme,
@@ -448,102 +449,9 @@ export class Renderer {
 
   drawMonster(monster, camX, camY, frame) {
     if (!monster.alive) return;
-    if (monster.isBoss) {
-      this.drawBoss(monster, camX, camY, frame);
-      return;
-    }
-    if (monster.isMimic) {
-      this.drawMimic(monster, camX, camY, frame);
-      return;
-    }
     const { sx, sy } = this.worldToScreen(monster.x, monster.y, camX, camY);
-    const ctx = this.ctx;
-    const wobble = Math.sin(frame / 5 + monster.x) * 0.5;
-
-    ctx.fillStyle = monster.color ?? COLORS.monster;
-    ctx.fillRect(sx + 3, sy + 5 + wobble, 10, 8);
-    ctx.fillRect(sx + 4, sy + 3 + wobble, 8, 4);
-
-    if (monster.isLegendary) {
-      ctx.fillStyle = '#ffcc44';
-      ctx.fillRect(sx + 4, sy + 1 + wobble, 8, 2);
-    }
-
-    ctx.fillStyle = '#ffaaaa';
-    ctx.fillRect(sx + 5, sy + 5 + wobble, 2, 2);
-    ctx.fillRect(sx + 9, sy + 5 + wobble, 2, 2);
-
-    if (monster.ranged) {
-      ctx.fillStyle = '#ccccaa';
-      ctx.fillRect(sx + 11, sy + 7 + wobble, 3, 2);
-      ctx.fillRect(sx + 12, sy + 6 + wobble, 2, 2);
-    }
-
-    const hpPct = monster.hp / monster.maxHp;
-    ctx.fillStyle = '#330000';
-    ctx.fillRect(sx + 2, sy + 1, 12, 2);
-    ctx.fillStyle = '#ff0044';
-    ctx.fillRect(sx + 2, sy + 1, 12 * hpPct, 2);
-  }
-
-  drawMimic(monster, camX, camY, frame) {
-    const { sx, sy } = this.worldToScreen(monster.x, monster.y, camX, camY);
-    const ctx = this.ctx;
-    const pulse = Math.sin(frame / 4 + monster.x) * 0.8;
-
-    ctx.fillStyle = '#553311';
-    ctx.fillRect(sx + 2, sy + 8 + pulse, 12, 6);
-    ctx.fillStyle = '#775533';
-    ctx.fillRect(sx + 3, sy + 6 + pulse, 10, 4);
-    ctx.fillStyle = '#cc6644';
-    ctx.fillRect(sx + 4, sy + 4 + pulse, 8, 8);
-    ctx.fillStyle = '#ff8866';
-    ctx.fillRect(sx + 5, sy + 7 + pulse, 6, 3);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(sx + 5, sy + 5 + pulse, 2, 2);
-    ctx.fillRect(sx + 9, sy + 5 + pulse, 2, 2);
-    ctx.fillStyle = '#220000';
-    ctx.fillRect(sx + 5, sy + 6 + pulse, 2, 1);
-    ctx.fillRect(sx + 9, sy + 6 + pulse, 2, 1);
-    ctx.fillStyle = '#ffcc44';
-    ctx.fillRect(sx + 6, sy + 9 + pulse, 4, 1);
-
-    const hpPct = monster.hp / monster.maxHp;
-    ctx.fillStyle = '#330000';
-    ctx.fillRect(sx + 2, sy + 1, 12, 2);
-    ctx.fillStyle = '#ff6644';
-    ctx.fillRect(sx + 2, sy + 1, 12 * hpPct, 2);
-  }
-
-  drawBoss(boss, camX, camY, frame) {
-    const { sx, sy } = this.worldToScreen(boss.x, boss.y, camX, camY);
-    const ctx = this.ctx;
-    const pulse = Math.sin(frame / 4 + boss.x) * 0.8;
-    const color = boss.color ?? '#ff2244';
-
-    ctx.fillStyle = '#220022';
-    ctx.fillRect(sx + 1, sy + 2 + pulse, 14, 12);
-    ctx.fillStyle = color;
-    ctx.fillRect(sx + 2, sy + 4 + pulse, 12, 9);
-    ctx.fillStyle = '#ffcc00';
-    ctx.fillRect(sx + 4, sy + 1 + pulse, 8, 3);
-    ctx.fillRect(sx + 5, sy + 0 + pulse, 2, 2);
-    ctx.fillRect(sx + 9, sy + 0 + pulse, 2, 2);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(sx + 4, sy + 6 + pulse, 3, 3);
-    ctx.fillRect(sx + 9, sy + 6 + pulse, 3, 3);
-    ctx.fillStyle = '#110011';
-    ctx.fillRect(sx + 5, sy + 7 + pulse, 1, 1);
-    ctx.fillRect(sx + 10, sy + 7 + pulse, 1, 1);
-
-    const hpPct = boss.hp / boss.maxHp;
-    ctx.fillStyle = '#330000';
-    ctx.fillRect(sx + 1, sy - 1, 14, 3);
-    ctx.fillStyle = '#ff0044';
-    ctx.fillRect(sx + 1, sy - 1, 14 * hpPct, 3);
-    ctx.fillStyle = color;
-    ctx.fillRect(sx + 1, sy - 1, 14 * hpPct, 1);
+    const bob = Math.sin(frame / 5 + monster.x) * 0.5;
+    drawMonsterSprite(this.ctx, sx, sy, monster, bob);
   }
 
   drawMinion(minion, camX, camY, frame) {

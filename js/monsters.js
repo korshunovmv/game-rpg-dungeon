@@ -6,11 +6,13 @@ export const MONSTER_TYPES = {
     name: 'гоблин',
     hpMod: 1,
     atkMod: 1,
+    color: '#44aa44',
   },
   skeleton: {
     name: 'скелет',
     hpMod: 0.95,
     atkMod: 1,
+    color: '#ddddcc',
   },
   slime: {
     name: 'слизь',
