@@ -146,19 +146,21 @@ function findFrontierPath(map, hx, hy, explored, blocked, retreatFrom = null) {
     }
 
     if (isFrontier) {
-      candidates.push({ x, y, dist: manhattan(hx, hy, x, y) });
+      let retreatScore = 0;
+      if (retreatFrom) {
+        const now = manhattan(hx, hy, retreatFrom.x, retreatFrom.y);
+        const then = manhattan(x, y, retreatFrom.x, retreatFrom.y);
+        retreatScore = then - now;
+      }
+      candidates.push({ x, y, dist: manhattan(hx, hy, x, y), retreatScore });
     }
   }
 
-  candidates.sort((a, b) => a.dist - b.dist);
+  // Prefer goals that increase distance from a known threat,
+  // but do not hard-filter alternatives to avoid corridor loops.
+  candidates.sort((a, b) => b.retreatScore - a.retreatScore || a.dist - b.dist);
 
   for (const tile of candidates.slice(0, 35)) {
-    if (retreatFrom) {
-      const now = manhattan(hx, hy, retreatFrom.x, retreatFrom.y);
-      const then = manhattan(tile.x, tile.y, retreatFrom.x, retreatFrom.y);
-      if (then < now) continue;
-    }
-
     const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
     if (path?.length) {
       return { path, goal: tile };
