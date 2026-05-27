@@ -1,6 +1,7 @@
 import { randInt, shuffle, manhattan } from './utils.js';
 import { isWalkable } from './dungeon.js';
 import { WEAPONS, ARMORS, POTIONS, collectItem } from './items.js';
+import { canHeroEquipWeapon } from './classes.js';
 
 const MIMIC_CHANCE = 0.28;
 
@@ -155,6 +156,7 @@ export function chestPriority(chest, hero) {
 
   const loot = chest.loot;
   if (loot.type === 'weapon') {
+    if (!canHeroEquipWeapon(hero, loot)) return 700;
     const gain = loot.atk - (hero.weapon?.atk ?? 0);
     return 920 + (gain > 0 ? gain * 12 : 0);
   }

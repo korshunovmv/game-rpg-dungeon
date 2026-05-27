@@ -104,3 +104,35 @@ export function getItemSearchRange(hero) {
 export function canDisarmTraps(hero) {
   return !!getProfession(hero.profession).canDisarmTraps;
 }
+
+export const PROFESSION_WEAPON_TYPES = {
+  warrior: ['dagger', 'sword', 'axe', 'mace'],
+  archer: ['bow'],
+  mage: ['staff'],
+  thief: ['dagger'],
+  necromancer: ['staff'],
+};
+
+function weaponNameToType(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('кинжал')) return 'dagger';
+  if (n.includes('топор')) return 'axe';
+  if (n.includes('булав')) return 'mace';
+  if (n.includes('лук')) return 'bow';
+  if (n.includes('посох')) return 'staff';
+  if (n.includes('меч')) return 'sword';
+  return null;
+}
+
+export function getWeaponType(weapon) {
+  if (!weapon) return null;
+  if (weapon.spriteId) return weapon.spriteId;
+  return weaponNameToType(weapon.name);
+}
+
+export function canHeroEquipWeapon(hero, weapon) {
+  const type = getWeaponType(weapon);
+  if (!type) return false;
+  const allowed = PROFESSION_WEAPON_TYPES[hero.profession] ?? PROFESSION_WEAPON_TYPES.warrior;
+  return allowed.includes(type);
+}

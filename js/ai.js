@@ -15,6 +15,25 @@ const DIRS = [
   [-1, -1], [1, -1], [1, 1], [-1, 1],
 ];
 
+const CARDINAL_DIRS = DIRS.slice(0, 4);
+
+export function canStep(map, fromX, fromY, toX, toY, blocked = new Set()) {
+  if (!isWalkable(map, toX, toY) || blocked.has(key(toX, toY))) return false;
+
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  if (dx !== 0 && dy !== 0) {
+    if (!isWalkable(map, fromX + dx, fromY) || blocked.has(key(fromX + dx, fromY))) {
+      return false;
+    }
+    if (!isWalkable(map, fromX, fromY + dy) || blocked.has(key(fromX, fromY + dy))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export function findApproachPath(map, sx, sy, tx, ty, blocked = new Set()) {
   let best = null;
 
@@ -73,9 +92,6 @@ function findFrontierPath(map, hx, hy, explored, blocked) {
 }
 
 function findExplorationPath(map, hx, hy, explored, blocked) {
-  const frontier = findFrontierPath(map, hx, hy, explored, blocked);
-  if (frontier) return frontier;
-
   const unexplored = [];
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
@@ -86,6 +102,8 @@ function findExplorationPath(map, hx, hy, explored, blocked) {
     }
   }
 
+  if (!unexplored.length) return null;
+
   unexplored.sort((a, b) => a.dist - b.dist);
 
   for (const tile of unexplored.slice(0, 50)) {
@@ -95,7 +113,14 @@ function findExplorationPath(map, hx, hy, explored, blocked) {
     }
   }
 
-  return null;
+  for (const tile of unexplored.slice(0, 50)) {
+    const approach = findApproachPath(map, hx, hy, tile.x, tile.y, blocked);
+    if (approach?.path.length) {
+      return { path: approach.path, goal: approach.goal };
+    }
+  }
+
+  return findFrontierPath(map, hx, hy, explored, blocked);
 }
 
 function findMonsterApproach(map, hx, hy, monster, blocked) {
@@ -136,7 +161,8 @@ export function findPath(map, sx, sy, gx, gy, blocked = new Set()) {
       const nx = current.x + dx;
       const ny = current.y + dy;
       const nk = key(nx, ny);
-      if (!isWalkable(map, nx, ny) || blocked.has(nk) || closed.has(nk)) continue;
+      if (closed.has(nk)) continue;
+      if (!canStep(map, current.x, current.y, nx, ny, blocked)) continue;
 
       const stepCost = dx !== 0 && dy !== 0 ? 1.4 : 1;
       const tentative = current.g + stepCost;
@@ -522,8 +548,8 @@ export function getExplorationTarget(
   return { type: 'wait' };
 }
 
-export function wanderStep(map, x, y) {
-  const options = DIRS.slice(0, 4).filter(([dx, dy]) => isWalkable(map, x + dx, y + dy));
+export function wanderStep(map, x, y, blocked = new Set()) {
+  const options = CARDINAL_DIRS.filter(([dx, dy]) => canStep(map, x, y, x + dx, y + dy, blocked));
   if (!options.length) return null;
   const [dx, dy] = options[Math.floor(Math.random() * options.length)];
   return { x: x + dx, y: y + dy };

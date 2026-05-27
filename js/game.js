@@ -1,7 +1,7 @@
 import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
-import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance } from './ai.js';
+import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep } from './ai.js';
 import { key, isMeleeAdjacent } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
@@ -297,6 +297,8 @@ export class Game {
     } else if (result.type === 'weapon') {
       if (result.equipped) {
         this.log(`Экипировано: ${result.name} (+${result.atk} ATK)`, 'loot');
+      } else if (result.unusable) {
+        this.log(`${result.name} не подходит классу, продано`, 'loot');
       } else {
         this.log(`${result.name} продан (слабее текущего)`, 'loot');
       }
@@ -621,6 +623,7 @@ export class Game {
     );
 
     if (action.type === 'fight') {
+      this.currentPath = [];
       this.doCombat(action.target, false, action.distance ?? 1);
       return;
     }
@@ -650,34 +653,26 @@ export class Game {
       return;
     }
 
-    if (action.type === 'room-loot') {
-      if (action.path?.length) {
-        this.currentPath = [...action.path];
-      }
-    } else if (action.type === 'disarm-move') {
-      if (action.path?.length) {
-        this.currentPath = [...action.path];
-      }
-    } else if (action.type === 'heal-move') {
-      if (action.path?.length) {
-        this.currentPath = [...action.path];
-      }
-    } else if (action.type === 'merchant-move') {
-      if (action.path?.length) {
-        this.currentPath = [...action.path];
-      }
-    } else if (action.type === 'chest-move') {
-      if (action.path?.length) {
-        this.currentPath = [...action.path];
-      }
-    } else if (action.type === 'chase') {
-      if (action.path?.length) {
-        this.currentPath = [...action.path];
-      }
-    } else if (action.type === 'move' || action.type === 'explore' || action.type === 'stairs') {
-      if (action.path?.length) {
-        this.currentPath = [...action.path];
-      }
+    const PATH_ACTIONS = new Set([
+      'room-loot',
+      'disarm-move',
+      'heal-move',
+      'merchant-move',
+      'chest-move',
+      'chase',
+      'move',
+      'explore',
+      'stairs',
+    ]);
+
+    if (PATH_ACTIONS.has(action.type)) {
+      this.currentPath = action.path?.length ? [...action.path] : [];
+    } else {
+      this.currentPath = [];
+    }
+
+    if (this.combatFocus?.alive && action.type === 'wait') {
+      this.combatFocus = null;
     }
 
     if (this.currentPath.length) {
@@ -691,17 +686,22 @@ export class Game {
         return;
       }
 
-      updateFacing(this.hero, next.x - this.hero.x, next.y - this.hero.y);
-      this.applyHeroMove(next.x, next.y);
-      return;
+      const occupied = new Set(
+        this.monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
+      );
+      if (!canStep(this.map, this.hero.x, this.hero.y, next.x, next.y, occupied)) {
+        this.currentPath = [];
+      } else {
+        updateFacing(this.hero, next.x - this.hero.x, next.y - this.hero.y);
+        this.applyHeroMove(next.x, next.y);
+        return;
+      }
     }
 
-    if (action.type === 'stairs' && action.path?.length) {
-      this.currentPath = [...action.path];
-      return;
-    }
-
-    const wander = wanderStep(this.map, this.hero.x, this.hero.y);
+    const wanderBlocked = new Set(
+      this.monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
+    );
+    const wander = wanderStep(this.map, this.hero.x, this.hero.y, wanderBlocked);
     if (wander) {
       this.applyHeroMove(wander.x, wander.y);
     }

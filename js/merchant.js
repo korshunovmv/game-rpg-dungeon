@@ -1,6 +1,7 @@
 import { randInt, shuffle } from './utils.js';
 import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS } from './items.js';
 import { luckMerchantChance } from './luck.js';
+import { canHeroEquipWeapon } from './classes.js';
 
 const MERCHANT_NAMES = ['Странник', 'Купец', 'Бродячий торговец'];
 const SPAWN_CHANCE = 0.32;
@@ -160,6 +161,7 @@ export function shopItemScore(item, hero) {
   }
 
   if (item.type === 'weapon') {
+    if (!canHeroEquipWeapon(hero, item)) return 0;
     const gain = item.atk - weaponScore(hero.weapon);
     if (gain <= 0) return 0;
     return (gain * 12) / item.price;
