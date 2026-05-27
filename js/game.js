@@ -1,7 +1,7 @@
 import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
-import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep } from './ai.js';
+import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep, findUnstickStep, getHeroBlockedSet } from './ai.js';
 import { key, isMeleeAdjacent } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
@@ -70,6 +70,9 @@ export class Game {
     this.floorSeeds = {};
     this.lastCombatMonster = null;
     this.combatFocus = null;
+    this.lastHeroPos = null;
+    this.stuckTicks = 0;
+    this.recentPositions = [];
   }
 
   start(professionId) {
@@ -146,6 +149,9 @@ export class Game {
     this.visible = new Set();
     this.currentPath = [];
     this.combatFocus = null;
+    this.lastHeroPos = key(this.hero.x, this.hero.y);
+    this.stuckTicks = 0;
+    this.recentPositions = [this.lastHeroPos];
     this.accumulator = 0;
     this.state = 'playing';
     this.revealAroundHero();
@@ -628,38 +634,57 @@ export class Game {
       this.healers,
       this.merchant,
       this.chests,
-      this.combatFocus
+      this.combatFocus,
+      this.visible
     );
 
-    if (action.type === 'fight') {
+    const prevPos = this.lastHeroPos;
+    let moved = false;
+
+    if (!this.shouldDeferInstantAction(action)) {
+      if (action.type === 'fight') {
+        this.currentPath = [];
+        this.doCombat(action.target, false, action.distance ?? 1);
+        this.trackHeroMovement(prevPos, false);
+        return;
+      }
+
+      if (action.type === 'disarm') {
+        this.currentPath = [];
+        this.doDisarm(action.target);
+        this.trackHeroMovement(prevPos, false);
+        return;
+      }
+
+      if (action.type === 'heal') {
+        this.currentPath = [];
+        this.doHeal(action.target);
+        this.trackHeroMovement(prevPos, false);
+        return;
+      }
+
+      if (action.type === 'shop') {
+        this.currentPath = [];
+        this.doShop(action.target);
+        this.trackHeroMovement(prevPos, false);
+        return;
+      }
+
+      if (action.type === 'loot') {
+        this.currentPath = [];
+        this.doLoot(action.target);
+        this.trackHeroMovement(prevPos, false);
+        return;
+      }
+
+      if (action.type === 'chest') {
+        this.currentPath = [];
+        this.doOpenChest(action.target);
+        this.trackHeroMovement(prevPos, false);
+        return;
+      }
+    } else {
       this.currentPath = [];
-      this.doCombat(action.target, false, action.distance ?? 1);
-      return;
-    }
-
-    if (action.type === 'disarm') {
-      this.doDisarm(action.target);
-      return;
-    }
-
-    if (action.type === 'heal') {
-      this.doHeal(action.target);
-      return;
-    }
-
-    if (action.type === 'shop') {
-      this.doShop(action.target);
-      return;
-    }
-
-    if (action.type === 'loot') {
-      this.doLoot(action.target);
-      return;
-    }
-
-    if (action.type === 'chest') {
-      this.doOpenChest(action.target);
-      return;
     }
 
     const PATH_ACTIONS = new Set([
@@ -676,6 +701,9 @@ export class Game {
 
     if (PATH_ACTIONS.has(action.type)) {
       this.currentPath = action.path?.length ? [...action.path] : [];
+      if (action.type === 'chase' && action.goal?.x != null && action.goal?.alive !== false) {
+        this.combatFocus = action.goal;
+      }
     } else {
       this.currentPath = [];
     }
@@ -692,27 +720,117 @@ export class Game {
       if (blocker) {
         this.currentPath = [];
         this.doCombat(blocker, false, getHeroFightDistance(this.hero, blocker));
+        this.trackHeroMovement(prevPos, false);
         return;
       }
 
-      const occupied = new Set(
-        this.monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
-      );
+      const occupied = getHeroBlockedSet(this.hero, this.monsters, this.minions);
+      occupied.delete(key(this.hero.x, this.hero.y));
       if (!canStep(this.map, this.hero.x, this.hero.y, next.x, next.y, occupied)) {
         this.currentPath = [];
       } else {
         updateFacing(this.hero, next.x - this.hero.x, next.y - this.hero.y);
         this.applyHeroMove(next.x, next.y);
+        moved = true;
+        this.trackHeroMovement(prevPos, moved);
         return;
       }
     }
 
-    const wanderBlocked = new Set(
-      this.monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
-    );
+    const wanderBlocked = getHeroBlockedSet(this.hero, this.monsters, this.minions);
+    wanderBlocked.delete(key(this.hero.x, this.hero.y));
+
+    const shouldForceUnstick = this.stuckTicks >= 2
+      || action.type === 'wait'
+      || this.shouldDeferInstantAction(action);
+
+    if (shouldForceUnstick) {
+      const unstick = findUnstickStep(
+        this.map,
+        this.hero.x,
+        this.hero.y,
+        this.explored,
+        wanderBlocked,
+        {
+          visible: this.visible,
+          monsters: this.monsters,
+          hero: this.hero,
+          stairs: getAliveBoss(this.monsters) ? null : this.stairs,
+          avoidKeys: this.recentPositions,
+        }
+      );
+      if (unstick) {
+        updateFacing(this.hero, unstick.x - this.hero.x, unstick.y - this.hero.y);
+        this.applyHeroMove(unstick.x, unstick.y);
+        moved = true;
+        this.trackHeroMovement(prevPos, moved);
+        return;
+      }
+    }
+
     const wander = wanderStep(this.map, this.hero.x, this.hero.y, wanderBlocked);
     if (wander) {
+      updateFacing(this.hero, wander.x - this.hero.x, wander.y - this.hero.y);
       this.applyHeroMove(wander.x, wander.y);
+      moved = true;
+    }
+
+    this.trackHeroMovement(prevPos, moved);
+  }
+
+  shouldDeferInstantAction(action) {
+    if (this.stuckTicks < 2) return false;
+
+    switch (action.type) {
+      case 'shop':
+      case 'wait':
+        return true;
+      case 'fight':
+        if (!action.target) return true;
+        return !isMeleeAdjacent(
+          this.hero.x,
+          this.hero.y,
+          action.target.x,
+          action.target.y
+        );
+      case 'heal':
+      case 'disarm':
+      case 'loot':
+      case 'chest':
+        return this.stuckTicks >= 4;
+      default:
+        return false;
+    }
+  }
+
+  trackHeroMovement(prevPos, moved) {
+    const curPos = key(this.hero.x, this.hero.y);
+    if (!prevPos) {
+      this.lastHeroPos = curPos;
+      this.stuckTicks = 0;
+      this.recentPositions = [curPos];
+      return;
+    }
+
+    if (moved && curPos !== prevPos) {
+      this.stuckTicks = 0;
+      this.lastHeroPos = curPos;
+      this.recentPositions.push(curPos);
+      if (this.recentPositions.length > 6) {
+        this.recentPositions.shift();
+      }
+      return;
+    }
+
+    if (curPos === prevPos) {
+      this.stuckTicks += 1;
+    } else {
+      this.stuckTicks = 0;
+      this.lastHeroPos = curPos;
+      this.recentPositions.push(curPos);
+      if (this.recentPositions.length > 6) {
+        this.recentPositions.shift();
+      }
     }
   }
 

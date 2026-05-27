@@ -9,6 +9,19 @@ import { isHealingItem, itemPriority } from './items.js';
 import { hasWorthwhilePurchase, merchantHasStock } from './merchant.js';
 import { getAliveBoss } from './bosses.js';
 import { chestPriority, isUnopenedChest } from './chests.js';
+import { getHeroVision } from './skills.js';
+
+export function getHeroBlockedSet(hero, monsters, minions = []) {
+  const blocked = new Set();
+  if (hero) blocked.add(key(hero.x, hero.y));
+  for (const monster of monsters) {
+    if (monster.alive) blocked.add(key(monster.x, monster.y));
+  }
+  for (const minion of minions) {
+    if (minion.alive) blocked.add(key(minion.x, minion.y));
+  }
+  return blocked;
+}
 
 const DIRS = [
   [0, -1], [1, 0], [0, 1], [-1, 0],
@@ -56,7 +69,31 @@ export function findApproachPath(map, sx, sy, tx, ty, blocked = new Set()) {
   return best;
 }
 
-function findFrontierPath(map, hx, hy, explored, blocked) {
+function getKnownMonsters(monsters, explored, visible, hero) {
+  return monsters
+    .filter((m) => m.alive && isMonsterKnown(m, explored, visible, hero))
+    .map((m) => ({ monster: m, dist: manhattan(hero.x, hero.y, m.x, m.y) }))
+    .sort((a, b) => a.dist - b.dist);
+}
+
+function findGuardianEngagement(map, hx, hy, hero, monsters, explored, visible, blocked) {
+  const attackRange = getAttackRange(hero);
+
+  for (const { monster } of getKnownMonsters(monsters, explored, visible, hero)) {
+    if (canAttackTarget(map, hx, hy, monster.x, monster.y, attackRange)) {
+      return null;
+    }
+
+    const approach = findMonsterApproach(map, hx, hy, monster, blocked);
+    if (approach?.path.length) {
+      return { type: 'chase', path: approach.path, goal: monster };
+    }
+  }
+
+  return null;
+}
+
+function findFrontierPath(map, hx, hy, explored, blocked, retreatFrom = null) {
   const candidates = [];
 
   for (const ek of explored) {
@@ -82,6 +119,12 @@ function findFrontierPath(map, hx, hy, explored, blocked) {
   candidates.sort((a, b) => a.dist - b.dist);
 
   for (const tile of candidates.slice(0, 35)) {
+    if (retreatFrom) {
+      const now = manhattan(hx, hy, retreatFrom.x, retreatFrom.y);
+      const then = manhattan(tile.x, tile.y, retreatFrom.x, retreatFrom.y);
+      if (then > now) continue;
+    }
+
     const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
     if (path?.length) {
       return { path, goal: tile };
@@ -91,36 +134,163 @@ function findFrontierPath(map, hx, hy, explored, blocked) {
   return null;
 }
 
-function findExplorationPath(map, hx, hy, explored, blocked) {
+function isMonsterKnown(monster, explored, visible, hero) {
+  const k = key(monster.x, monster.y);
+  if (explored.has(k) || (visible?.has(k) ?? false)) return true;
+  if (!hero) return false;
+  return manhattan(hero.x, hero.y, monster.x, monster.y) <= getHeroVision(hero);
+}
+
+function isNarrowPassage(map, x, y) {
+  let exits = 0;
+  for (const [dx, dy] of CARDINAL_DIRS) {
+    if (isWalkable(map, x + dx, y + dy)) exits += 1;
+  }
+  return exits <= 2;
+}
+
+function bfsToNearestUnexplored(map, sx, sy, explored, blocked) {
+  const startK = key(sx, sy);
+  const queue = [{ x: sx, y: sy }];
+  const cameFrom = new Map([[startK, null]]);
+
+  while (queue.length) {
+    const { x, y } = queue.shift();
+    const ck = key(x, y);
+
+    if (!explored.has(ck) && isWalkable(map, x, y) && !blocked.has(ck)) {
+      const path = [];
+      let cur = ck;
+      while (cameFrom.get(cur) !== null) {
+        const [px, py] = cur.split(',').map(Number);
+        path.unshift({ x: px, y: py });
+        cur = cameFrom.get(cur);
+      }
+      if (path.length) {
+        const [gx, gy] = ck.split(',').map(Number);
+        return { path, goal: { x: gx, y: gy } };
+      }
+      continue;
+    }
+
+    for (const [dx, dy] of CARDINAL_DIRS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const nk = key(nx, ny);
+      if (cameFrom.has(nk)) continue;
+      if (!canStep(map, x, y, nx, ny, blocked)) continue;
+      cameFrom.set(nk, ck);
+      queue.push({ x: nx, y: ny });
+    }
+  }
+
+  return null;
+}
+
+function findExplorationPath(map, hx, hy, explored, blocked, retreatFrom = null) {
+  const direct = bfsToNearestUnexplored(map, hx, hy, explored, blocked);
+  if (direct) return direct;
+
   const unexplored = [];
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       if (!isWalkable(map, x, y)) continue;
       if (!explored.has(key(x, y))) {
-        unexplored.push({ x, y, dist: manhattan(hx, hy, x, y) });
+        unexplored.push({ x, y });
       }
     }
   }
 
-  if (!unexplored.length) return null;
-
-  unexplored.sort((a, b) => a.dist - b.dist);
-
-  for (const tile of unexplored.slice(0, 50)) {
-    const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
-    if (path?.length) {
-      return { path, goal: tile };
-    }
-  }
-
-  for (const tile of unexplored.slice(0, 50)) {
+  for (const tile of unexplored.slice(0, 40)) {
     const approach = findApproachPath(map, hx, hy, tile.x, tile.y, blocked);
     if (approach?.path.length) {
       return { path: approach.path, goal: approach.goal };
     }
   }
 
-  return findFrontierPath(map, hx, hy, explored, blocked);
+  return findFrontierPath(map, hx, hy, explored, blocked, retreatFrom);
+}
+
+function findKnownMonsterApproach(map, hx, hy, monsters, explored, visible, blocked, hero) {
+  const sorted = monsters
+    .filter((m) => m.alive && isMonsterKnown(m, explored, visible, hero))
+    .map((m) => ({ monster: m, dist: manhattan(hx, hy, m.x, m.y) }))
+    .sort((a, b) => a.dist - b.dist);
+
+  for (const { monster } of sorted) {
+    const approach = findMonsterApproach(map, hx, hy, monster, blocked);
+    if (approach?.path.length) {
+      return { path: approach.path, goal: monster };
+    }
+  }
+
+  return null;
+}
+
+function findStairsPath(map, hx, hy, blocked) {
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] !== TILES.STAIRS) continue;
+      const path = findPath(map, hx, hy, x, y, blocked);
+      if (path?.length) {
+        return { path, goal: { x, y } };
+      }
+    }
+  }
+  return null;
+}
+
+export function findUnstickStep(map, hx, hy, explored, blocked, options = {}) {
+  const { visible = null, stairs = null, avoidKeys = [], hero = null } = options;
+  const avoid = new Set(avoidKeys);
+  const monsters = options.monsters ?? [];
+  const known = hero
+    ? getKnownMonsters(monsters, explored, visible, hero)
+    : [];
+  const nearestGuardian = known[0]?.monster ?? null;
+
+  const guardianEngage = hero
+    ? findGuardianEngagement(map, hx, hy, hero, monsters, explored, visible, blocked)
+    : null;
+  if (guardianEngage?.path[0]) return guardianEngage.path[0];
+
+  const explore = bfsToNearestUnexplored(map, hx, hy, explored, blocked);
+  if (explore?.path[0]) return explore.path[0];
+
+  if (stairs) {
+    const stairPath = findPath(map, hx, hy, stairs.x, stairs.y, blocked);
+    if (stairPath?.[0]) return stairPath[0];
+  }
+
+  const scored = CARDINAL_DIRS
+    .map(([dx, dy]) => ({ x: hx + dx, y: hy + dy }))
+    .filter(({ x, y }) => canStep(map, hx, hy, x, y, blocked))
+    .map(({ x, y }) => {
+      let score = 0;
+      const nk = key(x, y);
+      if (avoid.has(nk)) score -= 30;
+      if (!explored.has(nk)) score += 10;
+
+      if (nearestGuardian) {
+        const curDist = manhattan(hx, hy, nearestGuardian.x, nearestGuardian.y);
+        const nextDist = manhattan(x, y, nearestGuardian.x, nearestGuardian.y);
+        if (nextDist > curDist) score -= 100;
+        else score += (curDist - nextDist) * 8;
+      }
+
+      for (const [ddx, ddy] of CARDINAL_DIRS) {
+        const cx = x + ddx;
+        const cy = y + ddy;
+        if (isWalkable(map, cx, cy) && !explored.has(key(cx, cy))) {
+          score += 4;
+        }
+      }
+
+      return { x, y, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return scored[0] ?? null;
 }
 
 function findMonsterApproach(map, hx, hy, monster, blocked) {
@@ -350,18 +520,21 @@ export function getExplorationTarget(
   healers = [],
   merchant = null,
   chests = [],
-  focusMonster = null
+  focusMonster = null,
+  visible = null
 ) {
   const { x: hx, y: hy } = hero;
   const attackRange = getAttackRange(hero);
   const itemRange = getItemSearchRange(hero);
   const needHeal = hero.hp / hero.maxHp < 0.45;
+  const narrow = isNarrowPassage(map, hx, hy);
+  const lootRange = narrow ? Math.min(itemRange, 5) : itemRange;
   const blocked = new Set(
     monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
   );
 
   const boss = getAliveBoss(monsters);
-  if (boss) {
+  if (boss && isMonsterKnown(boss, explored, visible, hero)) {
     const bossDist = manhattan(hx, hy, boss.x, boss.y);
     if (canAttackTarget(map, hx, hy, boss.x, boss.y, attackRange)) {
       return { type: 'fight', target: boss, distance: bossDist };
@@ -369,7 +542,8 @@ export function getExplorationTarget(
   }
 
   const targetMonster = monsters
-    .filter((m) => m.alive && canAttackTarget(map, hx, hy, m.x, m.y, attackRange))
+    .filter((m) => m.alive && isMonsterKnown(m, explored, visible, hero)
+      && canAttackTarget(map, hx, hy, m.x, m.y, attackRange))
     .map((m) => ({ monster: m, dist: getHeroFightDistance(hero, m) }))
     .sort((a, b) => a.dist - b.dist)[0];
 
@@ -381,7 +555,7 @@ export function getExplorationTarget(
     };
   }
 
-  if (focusMonster?.alive) {
+  if (focusMonster?.alive && isMonsterKnown(focusMonster, explored, visible, hero)) {
     if (canAttackTarget(map, hx, hy, focusMonster.x, focusMonster.y, attackRange)) {
       return {
         type: 'fight',
@@ -396,6 +570,15 @@ export function getExplorationTarget(
     }
   }
 
+  const guardianEngage = findGuardianEngagement(
+    map, hx, hy, hero, monsters, explored, visible, blocked
+  );
+  if (guardianEngage) {
+    return guardianEngage;
+  }
+
+  const nearestGuardian = getKnownMonsters(monsters, explored, visible, hero)[0]?.monster ?? null;
+
   if (canDisarmTraps(hero)) {
     const adjacentTrap = getDisarmableTrap(traps, hx, hy, 1);
     if (adjacentTrap) {
@@ -405,7 +588,7 @@ export function getExplorationTarget(
     const nearbyTrap = traps
       .filter((t) => !t.disarmed && !t.triggered && t.revealed)
       .map((t) => ({ trap: t, dist: manhattan(hx, hy, t.x, t.y) }))
-      .filter((e) => e.dist > 1 && e.dist <= itemRange)
+      .filter((e) => e.dist > 1 && e.dist <= (narrow ? 4 : itemRange))
       .sort((a, b) => a.dist - b.dist)[0];
 
     if (nearbyTrap) {
@@ -462,7 +645,7 @@ export function getExplorationTarget(
   const unopenedChests = chests.filter((c) => isUnopenedChest(c));
   const nearChest = unopenedChests
     .map((c) => ({ chest: c, dist: manhattan(hx, hy, c.x, c.y), score: chestPriority(c, hero) }))
-    .filter((e) => e.dist <= itemRange)
+    .filter((e) => e.dist <= lootRange)
     .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];
 
   if (nearChest) {
@@ -493,7 +676,7 @@ export function getExplorationTarget(
   const nearItem = items
     .filter((i) => !i.collected)
     .map((i) => ({ item: i, dist: manhattan(hx, hy, i.x, i.y), score: itemPriority(i, hero) }))
-    .filter((e) => e.dist <= itemRange)
+    .filter((e) => e.dist <= lootRange)
     .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];
 
   if (nearItem) {
@@ -508,24 +691,21 @@ export function getExplorationTarget(
     return { type: 'loot', target: onItemFallback };
   }
 
-  const explorePath = findExplorationPath(map, hx, hy, explored, blocked);
+  const explorePath = findExplorationPath(
+    map, hx, hy, explored, blocked, nearestGuardian
+  );
   if (explorePath) {
     return { type: 'explore', path: explorePath.path, goal: explorePath.goal };
   }
 
-  const visibleMonster = monsters
-    .filter((m) => m.alive && explored.has(key(m.x, m.y)))
-    .map((m) => ({ monster: m, dist: manhattan(hx, hy, m.x, m.y) }))
-    .sort((a, b) => a.dist - b.dist)[0];
-
-  if (visibleMonster && visibleMonster.dist <= 10) {
-    const approach = findMonsterApproach(map, hx, hy, visibleMonster.monster, blocked);
-    if (approach?.path.length) {
-      return { type: 'move', path: approach.path, goal: visibleMonster.monster };
-    }
+  const knownApproach = findKnownMonsterApproach(
+    map, hx, hy, monsters, explored, visible, blocked, hero
+  );
+  if (knownApproach) {
+    return { type: 'chase', path: knownApproach.path, goal: knownApproach.goal };
   }
 
-  if (boss) {
+  if (boss && isMonsterKnown(boss, explored, visible, hero)) {
     const bossApproach = findMonsterApproach(map, hx, hy, boss, blocked);
     if (bossApproach?.path.length) {
       return { type: 'move', path: bossApproach.path, goal: boss };
@@ -533,15 +713,9 @@ export function getExplorationTarget(
   }
 
   if (!boss) {
-    for (let y = 0; y < MAP_H; y++) {
-      for (let x = 0; x < MAP_W; x++) {
-        if (map[y][x] === 4) {
-          const path = findPath(map, hx, hy, x, y, blocked);
-          if (path?.length) {
-            return { type: 'stairs', path, goal: { x, y } };
-          }
-        }
-      }
+    const stairsPath = findStairsPath(map, hx, hy, blocked);
+    if (stairsPath) {
+      return { type: 'stairs', path: stairsPath.path, goal: stairsPath.goal };
     }
   }
 
