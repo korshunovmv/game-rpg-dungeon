@@ -3,7 +3,7 @@ import { VERSION } from './version.js';
 import { Renderer } from './renderer.js';
 import { Game } from './game.js';
 import { drawClassPreview } from './sprites.js';
-import { getTotalAtk, getTotalDef, getHealFlaskCount, getManaFlaskCount } from './items.js';
+import { getTotalAtk, getTotalDef } from './items.js';
 import { getLuck } from './luck.js';
 import { usesMana } from './classes.js';
 import { describeLegacyGift } from './legacy.js';
@@ -17,8 +17,6 @@ class UI {
     this.heroHp = document.getElementById('hero-hp');
     this.heroMana = document.getElementById('hero-mana');
     this.heroManaRow = document.getElementById('hero-mana-row');
-    this.heroHealFlasks = document.getElementById('hero-heal-flasks');
-    this.heroManaFlasks = document.getElementById('hero-mana-flasks');
     this.heroGold = document.getElementById('hero-gold');
     this.heroLevel = document.getElementById('hero-level');
     this.heroFloor = document.getElementById('hero-floor');
@@ -69,8 +67,6 @@ class UI {
     } else {
       this.heroManaRow.style.display = 'none';
     }
-    this.heroHealFlasks.textContent = String(getHealFlaskCount(hero));
-    this.heroManaFlasks.textContent = String(getManaFlaskCount(hero));
     this.heroAtk.textContent = String(getTotalAtk(hero));
     this.heroDef.textContent = String(getTotalDef(hero));
     this.heroLuck.textContent = String(getLuck(hero));

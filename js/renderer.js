@@ -1,4 +1,5 @@
-import { TILE, MAP_W, MAP_H, COLORS, TILES } from './config.js';
+import { getHealFlaskCount, getManaFlaskCount } from './items.js';
+import { COLORS, TILE, MAP_W, MAP_H, TILES } from './config.js';
 import { key } from './utils.js';
 import { drawHeroSprite, drawHeroDeath, drawLootWeapon, drawLootArmor } from './sprites.js';
 import { TRAP_TYPES } from './traps.js';
@@ -737,6 +738,39 @@ export class Renderer {
       const manaColor = manaRatio <= 0.2 ? '#224488' : '#66aaff';
       this.drawResourceBar(x, 34, barW, barH, manaRatio, manaColor, `MP ${mana}/${hero.maxMana}`);
     }
+
+    this.drawFlaskCounts(hero, x, hero.maxMana ? 50 : 32);
+  }
+
+  drawFlaskIcon(sx, sy, color, highlight = '#ffffff') {
+    const ctx = this.ctx;
+    ctx.fillStyle = color;
+    ctx.fillRect(sx, sy + 2, 4, 6);
+    ctx.fillRect(sx + 1, sy, 2, 2);
+    ctx.fillStyle = highlight;
+    ctx.fillRect(sx + 1, sy + 3, 2, 2);
+  }
+
+  drawFlaskCounts(hero, x, y) {
+    const ctx = this.ctx;
+    const healCount = getHealFlaskCount(hero);
+    const manaCount = getManaFlaskCount(hero);
+    const panelW = 112;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(x - 3, y - 3, panelW + 6, 16);
+    ctx.strokeStyle = '#3d3d6b';
+    ctx.strokeRect(x + 0.5, y + 0.5, panelW - 1, 15);
+
+    this.drawFlaskIcon(x + 4, y + 4, COLORS.potion);
+    ctx.font = '5px "Press Start 2P", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#44ff88';
+    ctx.fillText(String(healCount), x + 12, y + 11);
+
+    this.drawFlaskIcon(x + 58, y + 4, '#4488ff', '#aaccff');
+    ctx.fillStyle = '#66aaff';
+    ctx.fillText(String(manaCount), x + 66, y + 11);
   }
 
   drawFloorLabel(theme, floor) {
