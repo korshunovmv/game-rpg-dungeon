@@ -645,7 +645,8 @@ export class Game {
       this.merchant,
       this.chests,
       this.combatFocus,
-      this.visible
+      this.visible,
+      this.minions
     );
 
     const prevPos = this.lastHeroPos;
@@ -655,42 +656,42 @@ export class Game {
       if (action.type === 'fight') {
         this.currentPath = [];
         this.doCombat(action.target, false, action.distance ?? 1);
-        this.trackHeroMovement(prevPos, false);
+        this.trackHeroMovement(prevPos, false, true);
         return;
       }
 
       if (action.type === 'disarm') {
         this.currentPath = [];
         this.doDisarm(action.target);
-        this.trackHeroMovement(prevPos, false);
+        this.trackHeroMovement(prevPos, false, true);
         return;
       }
 
       if (action.type === 'heal') {
         this.currentPath = [];
         this.doHeal(action.target);
-        this.trackHeroMovement(prevPos, false);
+        this.trackHeroMovement(prevPos, false, true);
         return;
       }
 
       if (action.type === 'shop') {
         this.currentPath = [];
         this.doShop(action.target);
-        this.trackHeroMovement(prevPos, false);
+        this.trackHeroMovement(prevPos, false, true);
         return;
       }
 
       if (action.type === 'loot') {
         this.currentPath = [];
         this.doLoot(action.target);
-        this.trackHeroMovement(prevPos, false);
+        this.trackHeroMovement(prevPos, false, true);
         return;
       }
 
       if (action.type === 'chest') {
         this.currentPath = [];
         this.doOpenChest(action.target);
-        this.trackHeroMovement(prevPos, false);
+        this.trackHeroMovement(prevPos, false, true);
         return;
       }
     } else {
@@ -730,7 +731,7 @@ export class Game {
       if (blocker) {
         this.currentPath = [];
         this.doCombat(blocker, false, getHeroFightDistance(this.hero, blocker));
-        this.trackHeroMovement(prevPos, false);
+        this.trackHeroMovement(prevPos, false, true);
         return;
       }
 
@@ -797,11 +798,13 @@ export class Game {
         return true;
       case 'fight':
         if (!action.target) return true;
-        return !isMeleeAdjacent(
+        return !canAttackTarget(
+          this.map,
           this.hero.x,
           this.hero.y,
           action.target.x,
-          action.target.y
+          action.target.y,
+          getAttackRange(this.hero)
         );
       case 'heal':
       case 'disarm':
@@ -813,12 +816,22 @@ export class Game {
     }
   }
 
-  trackHeroMovement(prevPos, moved) {
+  trackHeroMovement(prevPos, moved, acted = false) {
     const curPos = key(this.hero.x, this.hero.y);
     if (!prevPos) {
       this.lastHeroPos = curPos;
       this.stuckTicks = 0;
       this.recentPositions = [curPos];
+      return;
+    }
+
+    if (acted) {
+      this.stuckTicks = 0;
+      this.lastHeroPos = curPos;
+      this.recentPositions.push(curPos);
+      if (this.recentPositions.length > 6) {
+        this.recentPositions.shift();
+      }
       return;
     }
 

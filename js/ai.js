@@ -69,6 +69,38 @@ export function findApproachPath(map, sx, sy, tx, ty, blocked = new Set()) {
   return best;
 }
 
+function findAttackPositionPath(map, sx, sy, monster, hero, blocked = new Set()) {
+  const attackRange = getAttackRange(hero);
+  if (attackRange <= 1) {
+    return findApproachPath(map, sx, sy, monster.x, monster.y, blocked);
+  }
+
+  let best = null;
+  for (let y = monster.y - attackRange; y <= monster.y + attackRange; y += 1) {
+    for (let x = monster.x - attackRange; x <= monster.x + attackRange; x += 1) {
+      const tileKey = key(x, y);
+      const onTile = sx === x && sy === y;
+      if (!isWalkable(map, x, y) || (!onTile && blocked.has(tileKey))) continue;
+      if (!canAttackTarget(map, x, y, monster.x, monster.y, attackRange)) continue;
+
+      const path = findPath(map, sx, sy, x, y, blocked);
+      if (!path?.length && !onTile) continue;
+
+      const len = path?.length ?? 0;
+      const dist = manhattan(x, y, monster.x, monster.y);
+      if (!best || len < best.path.length || (len === best.path.length && dist > best.distance)) {
+        best = {
+          path: path ?? [],
+          goal: { x, y, targetX: monster.x, targetY: monster.y },
+          distance: dist,
+        };
+      }
+    }
+  }
+
+  return best;
+}
+
 function getKnownMonsters(monsters, explored, visible, hero) {
   return monsters
     .filter((m) => m.alive && isMonsterKnown(m, explored, visible, hero))
@@ -84,7 +116,7 @@ function findGuardianEngagement(map, hx, hy, hero, monsters, explored, visible, 
       return null;
     }
 
-    const approach = findMonsterApproach(map, hx, hy, monster, blocked);
+    const approach = findMonsterApproach(map, hx, hy, monster, blocked, hero);
     if (approach?.path.length) {
       return { type: 'chase', path: approach.path, goal: monster };
     }
@@ -218,7 +250,7 @@ function findKnownMonsterApproach(map, hx, hy, monsters, explored, visible, bloc
     .sort((a, b) => a.dist - b.dist);
 
   for (const { monster } of sorted) {
-    const approach = findMonsterApproach(map, hx, hy, monster, blocked);
+    const approach = findMonsterApproach(map, hx, hy, monster, blocked, hero);
     if (approach?.path.length) {
       return { path: approach.path, goal: monster };
     }
@@ -293,7 +325,10 @@ export function findUnstickStep(map, hx, hy, explored, blocked, options = {}) {
   return scored[0] ?? null;
 }
 
-function findMonsterApproach(map, hx, hy, monster, blocked) {
+function findMonsterApproach(map, hx, hy, monster, blocked, hero = null) {
+  if (hero) {
+    return findAttackPositionPath(map, hx, hy, monster, hero, blocked);
+  }
   return findApproachPath(map, hx, hy, monster.x, monster.y, blocked);
 }
 
@@ -521,7 +556,8 @@ export function getExplorationTarget(
   merchant = null,
   chests = [],
   focusMonster = null,
-  visible = null
+  visible = null,
+  minions = []
 ) {
   const { x: hx, y: hy } = hero;
   const attackRange = getAttackRange(hero);
@@ -532,6 +568,9 @@ export function getExplorationTarget(
   const blocked = new Set(
     monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
   );
+  for (const minion of minions) {
+    if (minion.alive) blocked.add(key(minion.x, minion.y));
+  }
 
   const boss = getAliveBoss(monsters);
   if (boss && isMonsterKnown(boss, explored, visible, hero)) {
@@ -564,7 +603,7 @@ export function getExplorationTarget(
       };
     }
 
-    const focusApproach = findMonsterApproach(map, hx, hy, focusMonster, blocked);
+    const focusApproach = findMonsterApproach(map, hx, hy, focusMonster, blocked, hero);
     if (focusApproach?.path.length) {
       return { type: 'chase', path: focusApproach.path, goal: focusMonster };
     }
@@ -706,7 +745,7 @@ export function getExplorationTarget(
   }
 
   if (boss && isMonsterKnown(boss, explored, visible, hero)) {
-    const bossApproach = findMonsterApproach(map, hx, hy, boss, blocked);
+    const bossApproach = findMonsterApproach(map, hx, hy, boss, blocked, hero);
     if (bossApproach?.path.length) {
       return { type: 'move', path: bossApproach.path, goal: boss };
     }
