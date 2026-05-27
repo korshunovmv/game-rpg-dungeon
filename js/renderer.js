@@ -234,7 +234,7 @@ export class Renderer {
     };
   }
 
-  drawTile(map, x, y, explored, visible, camX, camY, theme) {
+  drawTile(map, roomTypeMap, x, y, explored, visible, camX, camY, theme) {
     const k = key(x, y);
     const seen = explored.has(k);
     const lit = visible.has(k);
@@ -255,7 +255,7 @@ export class Renderer {
         break;
       case TILES.LOCKED_DOOR:
       case TILES.DOOR:
-        drawFloorTile(ctx, sx, sy, theme, x, y);
+        drawFloorTile(ctx, sx, sy, theme, x, y, roomTypeMap?.[y]?.[x] ?? null);
         ctx.fillStyle = '#5a3b20';
         ctx.fillRect(sx + 4, sy + 2, 8, 12);
         ctx.fillStyle = '#8b5e34';
@@ -276,7 +276,7 @@ export class Renderer {
         drawStairsTile(ctx, sx, sy, theme);
         break;
       default:
-        drawFloorTile(ctx, sx, sy, theme, x, y);
+        drawFloorTile(ctx, sx, sy, theme, x, y, roomTypeMap?.[y]?.[x] ?? null);
         break;
     }
   }
@@ -764,7 +764,7 @@ export class Renderer {
   }
 
   render(state) {
-    const { map, hero, monsters, items, chests = [], traps = [], healers = [], merchant = null, minions = [], explored, visible, frame } = state;
+    const { map, roomTypeMap = null, hero, monsters, items, chests = [], traps = [], healers = [], merchant = null, minions = [], explored, visible, frame } = state;
     const ctx = this.ctx;
 
     ctx.fillStyle = '#000';
@@ -776,7 +776,7 @@ export class Renderer {
 
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
-        this.drawTile(map, x, y, explored, visible, camX, camY, theme);
+        this.drawTile(map, roomTypeMap, x, y, explored, visible, camX, camY, theme);
       }
     }
 

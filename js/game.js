@@ -130,6 +130,7 @@ export class Game {
     const seed = this.resolveFloorSeed(floor);
     const dungeon = generateDungeon(floor, seed);
     this.map = dungeon.map;
+    this.roomTypeMap = dungeon.roomTypeMap;
     this.stairs = dungeon.stairs;
     this.rooms = dungeon.rooms;
 
@@ -160,6 +161,10 @@ export class Game {
     this.state = 'playing';
     this.revealAroundHero();
     this.ui.log(`Этаж ${floor}.`, 'info');
+    const roomTypes = [...new Set((this.rooms ?? []).map((room) => room.typeLabel).filter(Boolean))];
+    if (roomTypes.length) {
+      this.ui.log(`Обнаружены комнаты: ${roomTypes.join(', ')}`, 'info');
+    }
     if (this.lockedFeature?.door) {
       this.ui.log('На этаже есть запертая дверь: ищите ключ', 'info');
     }
@@ -1134,6 +1139,7 @@ export class Game {
     const seed = this.resolveFloorSeed(nextFloor);
     const dungeon = generateDungeon(nextFloor, seed);
     this.map = dungeon.map;
+    this.roomTypeMap = dungeon.roomTypeMap;
     this.stairs = dungeon.stairs;
     this.rooms = dungeon.rooms;
     this.hero.x = dungeon.spawn.x;
@@ -1173,6 +1179,7 @@ export class Game {
     }
     this.renderer.render({
       map: this.map,
+      roomTypeMap: this.roomTypeMap,
       hero: this.hero,
       monsters: this.monsters,
       items: this.items,

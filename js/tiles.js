@@ -84,7 +84,65 @@ function floorSpot(x, y) {
   return (((x * 92837111) ^ (y * 689287499)) >>> 0) & 7;
 }
 
-export function drawFloorTile(ctx, sx, sy, theme, x, y) {
+function drawRoomDecor(ctx, sx, sy, roomType, x, y) {
+  if (!roomType) return;
+  const hash = ((x * 2654435761) ^ (y * 2246822519)) >>> 0;
+
+  if (roomType === 'library' && (hash % 5) === 0) {
+    ctx.fillStyle = '#5f3f2a';
+    ctx.fillRect(sx + 3, sy + 3, 10, 2);
+    ctx.fillStyle = '#8a5d3e';
+    ctx.fillRect(sx + 3, sy + 5, 10, 1);
+    ctx.fillStyle = '#4f2f1e';
+    ctx.fillRect(sx + 4, sy + 4, 1, 1);
+    ctx.fillRect(sx + 8, sy + 4, 1, 1);
+  } else if (roomType === 'dining' && (hash % 6) === 0) {
+    ctx.fillStyle = '#6d4f38';
+    ctx.fillRect(sx + 4, sy + 6, 8, 3);
+    ctx.fillStyle = '#93705a';
+    ctx.fillRect(sx + 4, sy + 6, 8, 1);
+    ctx.fillStyle = '#d8d1bf';
+    ctx.fillRect(sx + 6, sy + 7, 1, 1);
+    ctx.fillRect(sx + 9, sy + 7, 1, 1);
+  } else if (roomType === 'bedroom' && (hash % 7) === 0) {
+    ctx.fillStyle = '#4f5f8a';
+    ctx.fillRect(sx + 4, sy + 5, 8, 5);
+    ctx.fillStyle = '#8aa2d1';
+    ctx.fillRect(sx + 4, sy + 5, 8, 2);
+    ctx.fillStyle = '#d9e2f3';
+    ctx.fillRect(sx + 5, sy + 6, 2, 1);
+  } else if (roomType === 'hall' && (hash % 6) === 0) {
+    ctx.fillStyle = '#7b2f2f';
+    ctx.fillRect(sx + 5, sy + 4, 6, 8);
+    ctx.fillStyle = '#b54545';
+    ctx.fillRect(sx + 6, sy + 5, 4, 6);
+    ctx.fillStyle = '#e7b66f';
+    ctx.fillRect(sx + 7, sy + 7, 2, 2);
+  } else if (roomType === 'cave' && (hash % 4) === 0) {
+    ctx.fillStyle = '#555a64';
+    ctx.fillRect(sx + 4, sy + 9, 3, 3);
+    ctx.fillRect(sx + 8, sy + 7, 2, 2);
+    ctx.fillStyle = '#737984';
+    ctx.fillRect(sx + 5, sy + 9, 1, 1);
+  } else if (roomType === 'forest' && (hash % 4) === 0) {
+    ctx.fillStyle = '#2e7a3f';
+    ctx.fillRect(sx + 5, sy + 7, 2, 5);
+    ctx.fillRect(sx + 8, sy + 6, 2, 6);
+    ctx.fillStyle = '#53b56d';
+    ctx.fillRect(sx + 4, sy + 6, 4, 2);
+    ctx.fillRect(sx + 7, sy + 5, 4, 2);
+  } else if (roomType === 'glade' && (hash % 5) === 0) {
+    ctx.fillStyle = '#4ca05a';
+    ctx.fillRect(sx + 5, sy + 8, 5, 3);
+    ctx.fillStyle = '#8fdc96';
+    ctx.fillRect(sx + 6, sy + 8, 1, 1);
+    ctx.fillRect(sx + 8, sy + 9, 1, 1);
+    ctx.fillStyle = '#f3e28b';
+    ctx.fillRect(sx + 10, sy + 8, 1, 1);
+  }
+}
+
+export function drawFloorTile(ctx, sx, sy, theme, x, y, roomType = null) {
   const checker = (x + y) % 2 === 0;
   ctx.fillStyle = checker ? theme.floor.dark : theme.floor.light;
   ctx.fillRect(sx, sy, 16, 16);
@@ -115,6 +173,8 @@ export function drawFloorTile(ctx, sx, sy, theme, x, y) {
     ctx.fillRect(sx + 5, sy + 8, 2, 2);
     ctx.fillRect(sx + 11, sy + 5, 1, 3);
   }
+
+  drawRoomDecor(ctx, sx, sy, roomType, x, y);
 }
 
 export function drawStairsTile(ctx, sx, sy, theme) {

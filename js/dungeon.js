@@ -14,12 +14,158 @@ function createEmpty(w, h, fill = TILES.VOID) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
 }
 
+function createRoomTypeMap(rooms) {
+  const roomTypeMap = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(null));
+  for (const room of rooms) {
+    for (let y = room.y; y < room.y + room.h; y++) {
+      for (let x = room.x; x < room.x + room.w; x++) {
+        if (roomTypeMap[y]?.[x] != null) continue;
+        roomTypeMap[y][x] = room.type;
+      }
+    }
+  }
+  return roomTypeMap;
+}
+
+const ROOM_TYPES = [
+  'library',
+  'dining',
+  'bedroom',
+  'hall',
+  'cave',
+  'forest',
+  'glade',
+];
+
+const ROOM_TYPE_LABELS = {
+  library: 'библиотека',
+  dining: 'столовая',
+  bedroom: 'спальня',
+  hall: 'зал',
+  cave: 'пещера',
+  forest: 'лес',
+  glade: 'поляна',
+};
+
+const ROOM_SIZE_RULES = {
+  library: { w: [6, 10], h: [5, 8] },
+  dining: { w: [7, 11], h: [5, 8] },
+  bedroom: { w: [4, 7], h: [4, 6] },
+  hall: { w: [8, 12], h: [6, 9] },
+  cave: { w: [6, 11], h: [5, 9] },
+  forest: { w: [6, 11], h: [6, 10] },
+  glade: { w: [7, 12], h: [7, 11] },
+};
+
+function setTileSafe(map, x, y, tile) {
+  if (!map[y] || map[y][x] == null) return;
+  map[y][x] = tile;
+}
+
+function carveCenterPlaza(map, room, radius = 2) {
+  for (let y = room.cy - radius; y <= room.cy + radius; y++) {
+    for (let x = room.cx - radius; x <= room.cx + radius; x++) {
+      if (!isInsideRoom(room, x, y)) continue;
+      setTileSafe(map, x, y, TILES.FLOOR);
+    }
+  }
+}
+
+function carveRoomStyle(map, room) {
+  switch (room.type) {
+    case 'library': {
+      for (let y = room.y + 1; y < room.y + room.h - 1; y += 2) {
+        for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
+          if (Math.abs(x - room.cx) <= 1) continue;
+          setTileSafe(map, x, y, TILES.WALL);
+        }
+      }
+      break;
+    }
+    case 'dining': {
+      const tableW = Math.max(3, room.w - 4);
+      const tx = room.cx - Math.floor(tableW / 2);
+      const ty = room.cy;
+      for (let x = tx; x < tx + tableW; x++) {
+        setTileSafe(map, x, ty, TILES.WALL);
+      }
+      break;
+    }
+    case 'bedroom': {
+      const beds = [
+        { x: room.x + 1, y: room.y + 1 },
+        { x: room.x + room.w - 2, y: room.y + 1 },
+        { x: room.x + 1, y: room.y + room.h - 2 },
+      ];
+      for (const b of beds) {
+        if (!isInsideRoom(room, b.x, b.y)) continue;
+        setTileSafe(map, b.x, b.y, TILES.WALL);
+      }
+      break;
+    }
+    case 'hall': {
+      const pillars = [
+        { x: room.x + 1, y: room.y + 1 },
+        { x: room.x + room.w - 2, y: room.y + 1 },
+        { x: room.x + 1, y: room.y + room.h - 2 },
+        { x: room.x + room.w - 2, y: room.y + room.h - 2 },
+      ];
+      for (const p of pillars) {
+        if (Math.abs(p.x - room.cx) <= 1 && Math.abs(p.y - room.cy) <= 1) continue;
+        setTileSafe(map, p.x, p.y, TILES.WALL);
+      }
+      break;
+    }
+    case 'cave': {
+      for (let y = room.y + 1; y < room.y + room.h - 1; y++) {
+        for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
+          if (Math.abs(x - room.cx) <= 1 || Math.abs(y - room.cy) <= 1) continue;
+          const hash = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+          if ((hash & 3) === 0) setTileSafe(map, x, y, TILES.WALL);
+        }
+      }
+      break;
+    }
+    case 'forest': {
+      for (let y = room.y + 1; y < room.y + room.h - 1; y++) {
+        for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
+          if (Math.abs(x - room.cx) <= 1 || Math.abs(y - room.cy) <= 1) continue;
+          const hash = ((x * 83492791) ^ (y * 2654435761)) >>> 0;
+          if ((hash % 5) === 0) setTileSafe(map, x, y, TILES.WALL);
+        }
+      }
+      break;
+    }
+    case 'glade': {
+      for (let x = room.x + 1; x < room.x + room.w - 1; x++) {
+        if (Math.abs(x - room.cx) > 1) {
+          setTileSafe(map, x, room.y + 1, TILES.WALL);
+          setTileSafe(map, x, room.y + room.h - 2, TILES.WALL);
+        }
+      }
+      for (let y = room.y + 2; y < room.y + room.h - 2; y++) {
+        if (Math.abs(y - room.cy) > 1) {
+          setTileSafe(map, room.x + 1, y, TILES.WALL);
+          setTileSafe(map, room.x + room.w - 2, y, TILES.WALL);
+        }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  // Always keep a guaranteed walkable center for corridors and room spawns.
+  carveCenterPlaza(map, room, 2);
+}
+
 function carveRoom(map, room) {
   for (let y = room.y; y < room.y + room.h; y++) {
     for (let x = room.x; x < room.x + room.w; x++) {
       map[y][x] = TILES.FLOOR;
     }
   }
+  carveRoomStyle(map, room);
 }
 
 function roomsOverlap(a, b, pad = 1) {
@@ -35,11 +181,22 @@ function createRoom(attempts = 80, rng = null) {
   const ri = rng?.randInt ?? randInt;
   const rooms = [];
   for (let i = 0; i < attempts; i++) {
-    const w = ri(4, 9);
-    const h = ri(4, 7);
+    const type = ROOM_TYPES[ri(0, ROOM_TYPES.length - 1)];
+    const size = ROOM_SIZE_RULES[type];
+    const w = ri(size.w[0], size.w[1]);
+    const h = ri(size.h[0], size.h[1]);
     const x = ri(1, MAP_W - w - 2);
     const y = ri(1, MAP_H - h - 2);
-    const room = { x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) };
+    const room = {
+      x,
+      y,
+      w,
+      h,
+      cx: Math.floor(x + w / 2),
+      cy: Math.floor(y + h / 2),
+      type,
+      typeLabel: ROOM_TYPE_LABELS[type],
+    };
     if (!rooms.some((r) => roomsOverlap(room, r))) {
       rooms.push(room);
     }
@@ -95,10 +252,11 @@ function pickLockedDoorCandidate(map, room, spawn) {
   return candidates[0];
 }
 
-function floorTilesInRoom(room, blocked = new Set()) {
+function floorTilesInRoom(map, room, blocked = new Set()) {
   const tiles = [];
   for (let y = room.y; y < room.y + room.h; y += 1) {
     for (let x = room.x; x < room.x + room.w; x += 1) {
+      if (map[y]?.[x] !== TILES.FLOOR) continue;
       const k = makeKey(x, y);
       if (blocked.has(k)) continue;
       tiles.push({ x, y });
@@ -195,7 +353,7 @@ function createLockedRoomFeature(dungeon, floor, luck = 5, rng = null) {
   keyCandidates.sort((a, b) => b.dist - a.dist);
   const keyTile = keyCandidates[Math.min(2, keyCandidates.length - 1)];
 
-  const rewardTiles = floorTilesInRoom(chosenRoom, new Set([doorKey]));
+  const rewardTiles = floorTilesInRoom(map, chosenRoom, new Set([doorKey]));
   if (!rewardTiles.length) {
     map[door.y][door.x] = TILES.FLOOR;
     return null;
@@ -236,6 +394,7 @@ export function generateDungeon(floor = 1, seed = null) {
     map[Math.floor(MAP_H / 2)][Math.floor(MAP_W / 2)] = TILES.FLOOR;
     return {
       map,
+      roomTypeMap: Array.from({ length: MAP_H }, () => Array(MAP_W).fill(null)),
       spawn: { x: Math.floor(MAP_W / 2), y: Math.floor(MAP_H / 2) },
       stairs: { x: Math.floor(MAP_W / 2) + 1, y: Math.floor(MAP_H / 2) },
       rooms: [],
@@ -260,6 +419,7 @@ export function generateDungeon(floor = 1, seed = null) {
 
   const baseDungeon = {
     map,
+    roomTypeMap: createRoomTypeMap(rooms),
     spawn,
     stairs: { x: farRoom.cx, y: farRoom.cy },
     rooms,
@@ -269,6 +429,7 @@ export function generateDungeon(floor = 1, seed = null) {
 
   return {
     map,
+    roomTypeMap: baseDungeon.roomTypeMap,
     spawn,
     stairs: { x: farRoom.cx, y: farRoom.cy },
     rooms,
