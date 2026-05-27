@@ -507,54 +507,114 @@ export class Renderer {
 
     switch (trap.type) {
       case 'spike':
-        ctx.fillStyle = '#662222';
-        ctx.fillRect(sx + 3, sy + 10, 10, 4);
-        ctx.fillStyle = type.color;
+        // Rusty base plate
+        ctx.fillStyle = '#2a1b1b';
+        ctx.fillRect(sx + 2, sy + 11, 12, 3);
+        ctx.fillStyle = '#5e3838';
+        ctx.fillRect(sx + 3, sy + 10, 10, 2);
+        ctx.fillStyle = '#7a4c4c';
+        ctx.fillRect(sx + 4, sy + 10, 8, 1);
+
+        // Steel spikes
+        ctx.fillStyle = '#c8c8d2';
         for (let i = 0; i < 4; i++) {
-          ctx.fillRect(sx + 3 + i * 3, sy + 8 + pulse, 2, 4);
+          const px = sx + 3 + i * 3;
+          const top = sy + 7 + pulse;
+          ctx.fillRect(px + 1, top, 1, 1);
+          ctx.fillRect(px, top + 1, 3, 2);
+          ctx.fillStyle = '#8f8fa2';
+          ctx.fillRect(px, top + 2, 1, 1);
+          ctx.fillStyle = '#c8c8d2';
         }
         break;
       case 'arrow':
-        ctx.fillStyle = '#444444';
-        ctx.fillRect(sx + 2, sy + 7, 12, 2);
-        ctx.fillStyle = '#cccccc';
-        ctx.fillRect(sx + 8, sy + 5 + pulse, 5, 2);
-        ctx.fillRect(sx + 12, sy + 4 + pulse, 2, 4);
+        // Wall slit
+        ctx.fillStyle = '#2a2a34';
+        ctx.fillRect(sx + 2, sy + 6, 12, 4);
+        ctx.fillStyle = '#3f3f52';
+        ctx.fillRect(sx + 3, sy + 7, 10, 2);
+
+        // Loaded bolt
+        ctx.fillStyle = '#6b4a2a';
+        ctx.fillRect(sx + 5, sy + 8 + pulse, 6, 1);
+        ctx.fillStyle = '#b7b7c6';
+        ctx.fillRect(sx + 11, sy + 7 + pulse, 2, 3);
+        ctx.fillStyle = '#e0e0ef';
+        ctx.fillRect(sx + 12, sy + 8 + pulse, 1, 1);
         break;
       case 'poison':
-        ctx.fillStyle = '#114411';
-        ctx.fillRect(sx + 3, sy + 9, 10, 5);
+        // Toxic puddle
+        ctx.fillStyle = '#163015';
+        ctx.fillRect(sx + 3, sy + 10, 10, 4);
+        ctx.fillStyle = '#2a5a28';
+        ctx.fillRect(sx + 4, sy + 9, 8, 4);
         ctx.fillStyle = type.color;
-        ctx.fillRect(sx + 5, sy + 10 + pulse, 6, 3);
-        ctx.fillRect(sx + 7, sy + 8, 2, 2);
+        ctx.fillRect(sx + 5, sy + 10 + pulse, 6, 2);
+        ctx.fillStyle = '#a9ff77';
+        ctx.fillRect(sx + 6, sy + 10 + pulse, 2, 1);
+
+        // Vapour bubbles
+        ctx.fillStyle = '#7be84c';
+        ctx.fillRect(sx + 5, sy + 8 + pulse, 1, 1);
+        ctx.fillRect(sx + 10, sy + 7, 1, 1);
+        ctx.fillRect(sx + 8, sy + 6 + pulse, 1, 1);
         break;
       case 'fire':
-        ctx.fillStyle = '#442200';
+        // Brazier base
+        ctx.fillStyle = '#2f2217';
         ctx.fillRect(sx + 4, sy + 10, 8, 4);
-        ctx.fillStyle = '#ff4400';
+        ctx.fillStyle = '#4b3726';
+        ctx.fillRect(sx + 5, sy + 9, 6, 2);
+
+        // Flames
+        ctx.fillStyle = '#ff5a1f';
         ctx.fillRect(sx + 5, sy + 8 + pulse, 2, 4);
         ctx.fillRect(sx + 8, sy + 7 + pulse, 2, 5);
-        ctx.fillRect(sx + 11, sy + 8 + pulse, 2, 4);
-        ctx.fillStyle = '#ffaa00';
-        ctx.fillRect(sx + 7, sy + 6 + pulse, 2, 3);
+        ctx.fillRect(sx + 10, sy + 8 + pulse, 2, 4);
+        ctx.fillStyle = '#ffbe3b';
+        ctx.fillRect(sx + 7, sy + 7 + pulse, 3, 3);
+        ctx.fillStyle = '#fff1a6';
+        ctx.fillRect(sx + 8, sy + 8 + pulse, 1, 1);
         break;
       case 'teleport':
-        ctx.fillStyle = '#331155';
+        // Arcane frame
+        ctx.fillStyle = '#2a1242';
+        ctx.fillRect(sx + 3, sy + 3, 10, 10);
+        ctx.fillStyle = '#4b2670';
         ctx.fillRect(sx + 4, sy + 4, 8, 8);
+
+        // Rune cross
         ctx.fillStyle = type.color;
         ctx.fillRect(sx + 5, sy + 7 + pulse, 6, 2);
         ctx.fillRect(sx + 7, sy + 5 + pulse, 2, 6);
-        ctx.fillStyle = '#dd88ff';
+        ctx.fillStyle = '#f0b5ff';
         ctx.fillRect(sx + 7, sy + 7, 2, 2);
+
+        // Orbit sparks
+        ctx.fillStyle = '#d387ff';
+        ctx.fillRect(sx + 5, sy + 5, 1, 1);
+        ctx.fillRect(sx + 10, sy + 5, 1, 1);
+        ctx.fillRect(sx + 5, sy + 10, 1, 1);
+        ctx.fillRect(sx + 10, sy + 10, 1, 1);
         break;
       case 'slow':
-        ctx.fillStyle = '#223355';
-        for (let i = 0; i < 3; i++) {
-          ctx.fillRect(sx + 3 + i * 4, sy + 9 + pulse, 3, 2);
-          ctx.fillRect(sx + 5 + i * 3, sy + 12, 2, 2);
-        }
+        // Frost patch
+        ctx.fillStyle = '#1f324d';
+        ctx.fillRect(sx + 3, sy + 10, 10, 4);
+        ctx.fillStyle = '#2f4f75';
+        ctx.fillRect(sx + 4, sy + 9, 8, 3);
+
+        // Cold bands
+        ctx.fillStyle = '#6ea6d8';
+        ctx.fillRect(sx + 4, sy + 10 + pulse, 8, 1);
+        ctx.fillRect(sx + 5, sy + 12, 6, 1);
+
+        // Snowflake mark
         ctx.fillStyle = type.color;
-        ctx.fillRect(sx + 6, sy + 6, 4, 2);
+        ctx.fillRect(sx + 7, sy + 6, 2, 4);
+        ctx.fillRect(sx + 6, sy + 7, 4, 2);
+        ctx.fillStyle = '#d6f1ff';
+        ctx.fillRect(sx + 8, sy + 8, 1, 1);
         break;
       default:
         ctx.fillStyle = type?.color ?? '#ff8800';
