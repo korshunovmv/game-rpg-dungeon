@@ -32,12 +32,18 @@ export function createHero(spawn, professionId = 'warrior') {
     poison: 0,
     slowed: 0,
     magicShield: 0,
+    healFlasks: [],
+    manaFlasks: [],
     alive: true,
     facing: 'down',
     animFrame: 0,
     skills: {},
   };
   initHeroSkills(hero);
+  if (professionId === 'mage' || professionId === 'necromancer') {
+    hero.maxMana = 20 + hero.level * 2;
+    hero.mana = hero.maxMana;
+  }
   return hero;
 }
 
@@ -49,6 +55,11 @@ export function levelUp(hero) {
   hero.maxHp = hero.baseMaxHp + (hero.armor?.hp ?? 0);
   hero.atk += growth.atk;
   hero.def += growth.def;
+  if (hero.maxMana) {
+    const gained = 2;
+    hero.maxMana += gained;
+    hero.mana = Math.min(hero.maxMana, hero.mana + gained);
+  }
   hero.xpToLevel = Math.floor(hero.xpToLevel * 1.5);
   return hero;
 }

@@ -6,7 +6,8 @@ import { key, isMeleeAdjacent } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
 import { getTrapAt, triggerTrap, tickPoison, disarmTrap, revealTrapsForThief } from './traps.js';
-import { useHealer, purchaseFromMerchant } from './items.js';
+import { useHealer, purchaseFromMerchant, useHealFlask, useManaFlask, getHealFlaskCount, getManaFlaskCount } from './items.js';
+import { usesMana } from './classes.js';
 import { pickBestPurchase, merchantHasStock, hasWorthwhilePurchase } from './merchant.js';
 import { getAliveBoss } from './bosses.js';
 import { rollLuck } from './luck.js';
@@ -287,6 +288,12 @@ export class Game {
       const cureText = result.cured ? ', яд снят' : '';
       this.log(`${result.name}: +${result.value} HP${cureText}`, 'loot');
       this.renderer.addParticle(x, y, '#44ff88', 25);
+    } else if (result.type === 'heal_flask') {
+      this.log(`${result.name} → флаконы лечения: ${result.count}`, 'loot');
+      this.renderer.addParticle(x, y, '#44ff88', 25);
+    } else if (result.type === 'mana_flask') {
+      this.log(`${result.name} → флаконы маны: ${result.count}`, 'loot');
+      this.renderer.addParticle(x, y, '#4488ff', 25);
     } else if (result.type === 'weapon') {
       if (result.equipped) {
         this.log(`Экипировано: ${result.name} (+${result.atk} ATK)`, 'loot');
@@ -349,10 +356,12 @@ export class Game {
     if (!result) return;
 
     const seller = merchant.name ?? 'Торговец';
-    if (result.type === 'heal') {
-      const cureText = result.cured ? ', яд снят' : '';
-      this.log(`${seller}: ${result.name} за ${result.price} зол. (+${result.value} HP${cureText})`, 'shop');
+    if (result.type === 'heal_flask') {
+      this.log(`${seller}: ${result.name} за ${result.price} зол. (лечение: ${result.count})`, 'shop');
       this.renderer.addParticle(this.hero.x, this.hero.y, '#44ff88', 25);
+    } else if (result.type === 'mana_flask') {
+      this.log(`${seller}: ${result.name} за ${result.price} зол. (мана: ${result.count})`, 'shop');
+      this.renderer.addParticle(this.hero.x, this.hero.y, '#4488ff', 25);
     } else if (result.type === 'weapon') {
       this.log(`${seller}: ${result.name} (+${result.atk} ATK) за ${result.price} зол.`, 'shop');
       this.renderer.addParticle(this.hero.x, this.hero.y, '#cccccc', 20);
@@ -489,6 +498,33 @@ export class Game {
     };
   }
 
+  tryUseConsumables() {
+    if (!this.hero || this.hero.hp <= 0) return;
+
+    if (this.hero.hp < this.hero.maxHp && getHealFlaskCount(this.hero) > 0) {
+      const hpRatio = this.hero.hp / this.hero.maxHp;
+      if (hpRatio < 0.45 || this.hero.poison > 0) {
+        const result = useHealFlask(this.hero);
+        if (result?.healed > 0 || result?.cured) {
+          const cured = result.cured ? ', яд снят' : '';
+          this.log(`Флакон лечения: +${result.healed} HP${cured}`, 'info');
+          this.renderer.addParticle(this.hero.x, this.hero.y, '#44ff88', 20);
+        }
+      }
+    }
+
+    if (usesMana(this.hero) && getManaFlaskCount(this.hero) > 0) {
+      const manaRatio = this.hero.mana / this.hero.maxMana;
+      if (manaRatio < 0.35) {
+        const result = useManaFlask(this.hero);
+        if (result?.restored > 0) {
+          this.log(`Флакон маны: +${result.restored} MP`, 'info');
+          this.renderer.addParticle(this.hero.x, this.hero.y, '#4488ff', 20);
+        }
+      }
+    }
+  }
+
   tick() {
     if (this.paused || this.state !== 'playing') return;
 
@@ -540,6 +576,9 @@ export class Game {
       this.log('Заклинивание... пропуск хода', 'trap');
       return;
     }
+
+    this.tryUseConsumables();
+    this.syncStats();
 
     const attack = moveMonstersTowardHero(this.map, this.hero, this.monsters);
     if (attack) {

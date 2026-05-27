@@ -1,5 +1,5 @@
 import { randInt, shuffle } from './utils.js';
-import { POTIONS, WEAPONS, ARMORS } from './items.js';
+import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS } from './items.js';
 import { luckMerchantChance } from './luck.js';
 
 const MERCHANT_NAMES = ['Странник', 'Купец', 'Бродячий торговец'];
@@ -43,6 +43,17 @@ export function generateMerchantStock(floor) {
     heal: potion.heal + Math.floor(floor * 2),
     color: potion.color,
     price: 8 + Math.floor(floor * 3),
+    sold: false,
+  });
+
+  const manaPotion = MANA_POTIONS.mana_potion;
+  stock.push({
+    id: `s-m-${Date.now()}`,
+    type: 'mana_potion',
+    name: manaPotion.name,
+    restore: manaPotion.restore + Math.floor(floor * 2),
+    color: manaPotion.color,
+    price: 10 + Math.floor(floor * 3),
     sold: false,
   });
 
@@ -139,6 +150,13 @@ export function shopItemScore(item, hero) {
     const missing = hero.maxHp - hero.hp;
     if (missing < 8) return 0;
     return (item.heal / item.price) * (hero.hp / hero.maxHp < 0.6 ? 2 : 1);
+  }
+
+  if (item.type.startsWith('mana_potion')) {
+    if (!hero.maxMana) return 0;
+    const missing = hero.maxMana - hero.mana;
+    if (missing < 4) return 0;
+    return (item.restore / item.price) * (hero.mana / hero.maxMana < 0.5 ? 2 : 1);
   }
 
   if (item.type === 'weapon') {

@@ -277,6 +277,16 @@ export class Renderer {
       return;
     }
 
+    if (item.type.startsWith('mana_potion')) {
+      const color = item.color ?? '#4488ff';
+      ctx.fillStyle = color;
+      const h = item.type === 'mana_potion_large' ? 7 : 5;
+      ctx.fillRect(sx + 6, sy + 4 + (6 - h) + bob, 4, h);
+      ctx.fillStyle = '#aaccff';
+      ctx.fillRect(sx + 7, sy + 5 + bob, 2, 2);
+      return;
+    }
+
     if (item.type === 'weapon') {
       drawLootWeapon(ctx, sx, sy, item, bob);
       return;
@@ -686,6 +696,47 @@ export class Renderer {
     this.drawMinimap(map, explored, hero, state.stairs, camX, camY, theme, items);
     this.drawFloorLabel(theme, hero.floor ?? 1);
     this.drawParticles();
+    this.drawHeroBars(hero);
+  }
+
+  drawResourceBar(x, y, width, height, ratio, fillColor, label) {
+    const ctx = this.ctx;
+    const clamped = Math.max(0, Math.min(1, ratio));
+    const fillW = clamped > 0 ? Math.max(2, Math.floor(width * clamped)) : 0;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(x - 3, y - 3, width + 6, height + 6);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(x, y, width, height);
+    ctx.fillStyle = fillColor;
+    ctx.fillRect(x, y, fillW, height);
+    ctx.strokeStyle = '#3d3d6b';
+    ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+
+    ctx.font = '5px "Press Start 2P", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#e8e8ff';
+    ctx.fillText(label, x + width, y - 2);
+  }
+
+  drawHeroBars(hero) {
+    if (!hero?.maxHp) return;
+
+    const barW = 112;
+    const barH = 8;
+    const x = this.canvas.width - barW - 10;
+    const hp = Math.max(0, hero.hp);
+    const hpRatio = hp / hero.maxHp;
+    const hpColor = hpRatio <= 0.25 ? '#ff2244' : hpRatio <= 0.5 ? '#ff8844' : '#44ff88';
+
+    this.drawResourceBar(x, 16, barW, barH, hpRatio, hpColor, `HP ${hp}/${hero.maxHp}`);
+
+    if (hero.maxMana) {
+      const mana = Math.max(0, hero.mana);
+      const manaRatio = mana / hero.maxMana;
+      const manaColor = manaRatio <= 0.2 ? '#224488' : '#66aaff';
+      this.drawResourceBar(x, 34, barW, barH, manaRatio, manaColor, `MP ${mana}/${hero.maxMana}`);
+    }
   }
 
   drawFloorLabel(theme, floor) {

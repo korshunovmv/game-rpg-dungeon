@@ -82,6 +82,10 @@ export const PROFESSIONS = {
   },
 };
 
+export function usesMana(hero) {
+  return !!hero.maxMana;
+}
+
 export function getProfession(id) {
   return PROFESSIONS[id] ?? PROFESSIONS.warrior;
 }

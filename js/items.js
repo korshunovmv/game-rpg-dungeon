@@ -9,6 +9,16 @@ export const POTIONS = {
   potion_large: { id: 'potion_large', name: 'Большое зелье', heal: 55, color: '#00ffaa' },
 };
 
+export const MANA_POTIONS = {
+  mana_potion: { id: 'mana_potion', name: 'Флакон маны', restore: 14, color: '#4488ff' },
+  mana_potion_large: {
+    id: 'mana_potion_large',
+    name: 'Большой флакон маны',
+    restore: 28,
+    color: '#66aaff',
+  },
+};
+
 export const WEAPONS = [
   { id: 'dagger', name: 'Кинжал', atk: 1, color: '#aaaaaa' },
   { id: 'sword', name: 'Меч', atk: 2, color: '#cccccc' },
@@ -31,6 +41,8 @@ const LOOT_TABLE = [
   { type: 'potion_small', weight: 14 },
   { type: 'potion', weight: 12 },
   { type: 'potion_large', weight: 6 },
+  { type: 'mana_potion', weight: 8 },
+  { type: 'mana_potion_large', weight: 4 },
   { type: 'weapon', weight: 18 },
   { type: 'armor', weight: 16 },
 ];
@@ -88,6 +100,20 @@ export function createLootItem(pos, floor, index, luck = 5) {
       name: potion.name,
       heal: potion.heal + Math.floor(floor * 2),
       color: potion.color,
+      collected: false,
+    };
+  }
+
+  if (kind.startsWith('mana_potion')) {
+    const manaPotion = MANA_POTIONS[kind];
+    return {
+      id: `i-${index}-${Date.now()}`,
+      x: pos.x,
+      y: pos.y,
+      type: kind,
+      name: manaPotion.name,
+      restore: manaPotion.restore + Math.floor(floor * 2),
+      color: manaPotion.color,
       collected: false,
     };
   }
@@ -197,6 +223,55 @@ function armorScore(a) {
   return (a.def ?? 0) * 2 + (a.hp ?? 0) + (a.atk ?? 0);
 }
 
+export function getHealFlaskCount(hero) {
+  return hero.healFlasks?.length ?? 0;
+}
+
+export function getManaFlaskCount(hero) {
+  return hero.manaFlasks?.length ?? 0;
+}
+
+export function useHealFlask(hero) {
+  if (!hero.healFlasks?.length) return null;
+
+  const power = hero.healFlasks.shift();
+  const hadPoison = hero.poison > 0;
+  const healed = Math.min(power, hero.maxHp - hero.hp);
+  hero.hp += healed;
+  if (hadPoison) hero.poison = 0;
+
+  return {
+    healed,
+    cured: hadPoison,
+    remaining: hero.healFlasks.length,
+  };
+}
+
+export function useManaFlask(hero) {
+  if (!hero.maxMana || !hero.manaFlasks?.length) return null;
+
+  const power = hero.manaFlasks.shift();
+  const restored = Math.min(power, hero.maxMana - hero.mana);
+  hero.mana += restored;
+
+  return {
+    restored,
+    remaining: hero.manaFlasks.length,
+  };
+}
+
+export function ensureHeroMana(hero, cost) {
+  if (!hero.maxMana) return true;
+
+  while (hero.mana < cost && hero.manaFlasks?.length) {
+    useManaFlask(hero);
+  }
+
+  if (hero.mana < cost) return false;
+  hero.mana -= cost;
+  return true;
+}
+
 export function purchaseFromMerchant(hero, item) {
   if (item.sold || hero.gold < item.price) return null;
 
@@ -204,16 +279,22 @@ export function purchaseFromMerchant(hero, item) {
   item.sold = true;
 
   if (item.type.startsWith('potion')) {
-    const hadPoison = hero.poison > 0;
-    const healed = Math.min(item.heal, hero.maxHp - hero.hp);
-    hero.hp += healed;
-    if (hadPoison) hero.poison = 0;
+    hero.healFlasks.push(item.heal);
     return {
-      type: 'heal',
+      type: 'heal_flask',
       name: item.name,
-      value: healed,
+      count: hero.healFlasks.length,
       price: item.price,
-      cured: hadPoison,
+    };
+  }
+
+  if (item.type.startsWith('mana_potion')) {
+    hero.manaFlasks.push(item.restore);
+    return {
+      type: 'mana_flask',
+      name: item.name,
+      count: hero.manaFlasks.length,
+      price: item.price,
     };
   }
 
@@ -260,11 +341,21 @@ export function collectItem(hero, item) {
   }
 
   if (item.type.startsWith('potion')) {
-    const hadPoison = hero.poison > 0;
-    const healed = Math.min(item.heal, hero.maxHp - hero.hp);
-    hero.hp += healed;
-    if (hadPoison) hero.poison = 0;
-    return { type: 'heal', name: item.name, value: healed, cured: hadPoison };
+    hero.healFlasks.push(item.heal);
+    return {
+      type: 'heal_flask',
+      name: item.name,
+      count: hero.healFlasks.length,
+    };
+  }
+
+  if (item.type.startsWith('mana_potion')) {
+    hero.manaFlasks.push(item.restore);
+    return {
+      type: 'mana_flask',
+      name: item.name,
+      count: hero.manaFlasks.length,
+    };
   }
 
   if (item.type === 'weapon') {
@@ -316,8 +407,17 @@ export function isHealingItem(item) {
   return item.type.startsWith('potion');
 }
 
+export function isManaItem(item) {
+  return item.type.startsWith('mana_potion');
+}
+
 export function itemPriority(item, hero) {
   if (item.type === 'grave') return 1000;
+  if (isManaItem(item) && hero.maxMana) {
+    const missing = hero.maxMana - hero.mana;
+    if (missing <= 0) return 1;
+    return item.restore / missing;
+  }
   if (isHealingItem(item)) {
     const missing = hero.maxHp - hero.hp;
     if (missing <= 0) return 0;

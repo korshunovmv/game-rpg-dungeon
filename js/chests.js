@@ -82,6 +82,7 @@ export function describeChestLoot(loot) {
   if (!loot) return 'пусто';
   if (loot.type === 'gold') return `${loot.value} золота`;
   if (loot.type.startsWith('potion')) return loot.name;
+  if (loot.type.startsWith('mana_potion')) return loot.name;
   if (loot.type === 'weapon') return `${loot.name} (+${loot.atk} ATK)`;
   if (loot.type === 'armor') return `${loot.name} (+${loot.def} DEF)`;
   return loot.name ?? 'сокровище';
@@ -165,6 +166,11 @@ export function chestPriority(chest, hero) {
   if (loot.type.startsWith('potion')) {
     const missing = hero.maxHp - hero.hp;
     return missing > 0 ? 880 + loot.heal / missing : 700;
+  }
+  if (loot.type.startsWith('mana_potion')) {
+    if (!hero.maxMana) return 700;
+    const missing = hero.maxMana - hero.mana;
+    return missing > 0 ? 870 + loot.restore / missing : 680;
   }
   return 860;
 }

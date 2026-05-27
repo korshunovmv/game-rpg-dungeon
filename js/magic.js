@@ -1,5 +1,6 @@
 import { randInt, manhattan } from './utils.js';
 import { calcMonsterDamage, canMonsterHitHero } from './monsters.js';
+import { ensureHeroMana } from './items.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -17,6 +18,7 @@ export const SPELLS = {
     range: 3,
     mult: 1.15,
     bonus: 4,
+    manaCost: 5,
   },
   ice: {
     id: 'ice',
@@ -26,6 +28,7 @@ export const SPELLS = {
     mult: 0.95,
     bonus: 2,
     slow: 2,
+    manaCost: 4,
   },
   lightning: {
     id: 'lightning',
@@ -36,6 +39,7 @@ export const SPELLS = {
     bonus: 3,
     executeBelow: 0.35,
     executeMult: 1.75,
+    manaCost: 6,
   },
   arcane: {
     id: 'arcane',
@@ -45,6 +49,7 @@ export const SPELLS = {
     mult: 0.8,
     bonus: 2,
     aoe: 1,
+    manaCost: 7,
   },
   heal: {
     id: 'heal',
@@ -52,6 +57,7 @@ export const SPELLS = {
     color: '#44ffaa',
     range: 0,
     healPct: 0.28,
+    manaCost: 8,
   },
   shield: {
     id: 'shield',
@@ -59,6 +65,7 @@ export const SPELLS = {
     color: '#4488ff',
     range: 0,
     defBonus: 5,
+    manaCost: 6,
   },
 };
 
@@ -132,6 +139,18 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
   };
 
   hero.magicShield = 0;
+
+  const manaCost = spell.manaCost ?? 0;
+  if (manaCost && !ensureHeroMana(hero, manaCost)) {
+    result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.35) + randInt(0, 1));
+    monster.hp -= result.heroDmg;
+    result.attackLabel = 'Посох';
+    result.monsterDmg = applyMonsterCounter(hero, monster);
+    hero.hp -= result.monsterDmg;
+    result.monsterDead = monster.hp <= 0;
+    result.heroDead = hero.hp <= 0;
+    return result;
+  }
 
   if (spell.id === 'heal') {
     const amount = Math.floor(hero.maxHp * spell.healPct) + randInt(2, 6);

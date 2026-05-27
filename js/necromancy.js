@@ -3,6 +3,7 @@ import { isWalkable } from './dungeon.js';
 import { getProfession } from './classes.js';
 import { getLuck, rollLuck } from './luck.js';
 import { calcMonsterDamage, canMonsterHitHero } from './monsters.js';
+import { ensureHeroMana } from './items.js';
 
 function getTotalAtk(hero) {
   return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
@@ -20,6 +21,7 @@ export const NECRO_SPELLS = {
     range: 3,
     mult: 1.1,
     bonus: 3,
+    manaCost: 5,
   },
   drain: {
     id: 'drain',
@@ -29,6 +31,7 @@ export const NECRO_SPELLS = {
     mult: 1.25,
     bonus: 2,
     lifesteal: 0.5,
+    manaCost: 6,
   },
   curse: {
     id: 'curse',
@@ -39,6 +42,7 @@ export const NECRO_SPELLS = {
     bonus: 1,
     curseAtk: 3,
     curseTurns: 3,
+    manaCost: 5,
   },
   plague: {
     id: 'plague',
@@ -49,6 +53,7 @@ export const NECRO_SPELLS = {
     bonus: 2,
     decayTurns: 3,
     decayDmg: 3,
+    manaCost: 6,
   },
   boneArmor: {
     id: 'boneArmor',
@@ -56,6 +61,7 @@ export const NECRO_SPELLS = {
     color: '#ccccaa',
     range: 0,
     defBonus: 4,
+    manaCost: 5,
   },
 };
 
@@ -128,6 +134,18 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
   };
 
   hero.magicShield = 0;
+
+  const manaCost = spell.manaCost ?? 0;
+  if (manaCost && !ensureHeroMana(hero, manaCost)) {
+    result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.35) + randInt(0, 1));
+    monster.hp -= result.heroDmg;
+    result.attackLabel = 'Посох';
+    result.monsterDmg = applyCounter(hero, monster);
+    hero.hp -= result.monsterDmg;
+    result.monsterDead = monster.hp <= 0;
+    result.heroDead = hero.hp <= 0;
+    return result;
+  }
 
   if (spell.id === 'boneArmor') {
     hero.magicShield = spell.defBonus;
