@@ -193,6 +193,10 @@ export function shopItemScore(item, hero) {
   }
 
   if (item.type.startsWith('elixir_')) {
+    if (item.effect === 'poison_resist') return hero.poison > 0 ? 2.0 : 1.1;
+    if (item.effect === 'evasion') return 1.4;
+    if (item.effect === 'gold_bonus') return 1.3;
+    if (item.effect === 'haste') return hero.slowed > 0 ? 1.8 : 1.1;
     if (item.stat === 'intelligence' && !hero.maxMana) return 0.2;
     const hpRatio = hero.hp / Math.max(1, hero.maxHp);
     if (item.stat === 'endurance') return hpRatio < 0.6 ? 1.6 : 0.9;

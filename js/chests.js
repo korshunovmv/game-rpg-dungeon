@@ -83,7 +83,21 @@ export function describeChestLoot(loot) {
   if (loot.type === 'gold') return `${loot.value} золота`;
   if (loot.type.startsWith('potion')) return loot.name;
   if (loot.type.startsWith('mana_potion')) return loot.name;
-  if (loot.type.startsWith('elixir_')) return `${loot.name} (+${loot.amount} ${loot.statLabel})`;
+  if (loot.type.startsWith('elixir_')) {
+    if (loot.statLabel && loot.amount != null) {
+      return `${loot.name} (+${loot.amount} ${loot.statLabel})`;
+    }
+    if (loot.effectLabel === 'сопротивление яду') {
+      return `${loot.name} (${Math.round((loot.resistPct ?? 0) * 100)}% к яду)`;
+    }
+    if (loot.effectLabel === 'шанс уклонения') {
+      return `${loot.name} (+${Math.round((loot.dodgePct ?? 0) * 100)}% уклонения)`;
+    }
+    if (loot.effectLabel === 'бонус золота') {
+      return `${loot.name} (+${Math.round((loot.goldPct ?? 0) * 100)}% золота)`;
+    }
+    return loot.name;
+  }
   if (loot.type === 'weapon') return `${loot.name} (+${loot.atk} ATK)`;
   if (loot.type === 'armor') {
     const hpNote = loot.hp ? `, +${loot.hp} HP` : '';
@@ -179,6 +193,10 @@ export function chestPriority(chest, hero) {
     return missing > 0 ? 870 + loot.restore / missing : 680;
   }
   if (loot.type.startsWith('elixir_')) {
+    if (loot.effect === 'poison_resist') return 890;
+    if (loot.effect === 'evasion') return 885;
+    if (loot.effect === 'gold_bonus') return 875;
+    if (loot.effect === 'haste') return 880;
     return 875 + loot.amount * 2;
   }
   return 860;

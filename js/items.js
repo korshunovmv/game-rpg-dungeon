@@ -75,6 +75,42 @@ export const ELIXIRS = {
     turns: 30,
     color: '#b86cff',
   },
+  elixir_antidote: {
+    id: 'elixir_antidote',
+    name: 'Эликсир противоядия',
+    effect: 'poison_resist',
+    effectLabel: 'сопротивление яду',
+    resistPct: 0.55,
+    turns: 34,
+    color: '#3fcf73',
+  },
+  elixir_haste: {
+    id: 'elixir_haste',
+    name: 'Эликсир ускорения',
+    effect: 'haste',
+    effectLabel: 'ускорение',
+    haste: 1,
+    turns: 22,
+    color: '#67b7ff',
+  },
+  elixir_evasion: {
+    id: 'elixir_evasion',
+    name: 'Эликсир уклонения',
+    effect: 'evasion',
+    effectLabel: 'шанс уклонения',
+    dodgePct: 0.18,
+    turns: 28,
+    color: '#7cf7d2',
+  },
+  elixir_greed: {
+    id: 'elixir_greed',
+    name: 'Эликсир наживы',
+    effect: 'gold_bonus',
+    effectLabel: 'бонус золота',
+    goldPct: 0.35,
+    turns: 32,
+    color: '#f2cc47',
+  },
 };
 
 export const WEAPONS = [
@@ -132,11 +168,20 @@ function pickArmorBase(floor) {
 function pickElixir(floor) {
   const list = Object.values(ELIXIRS);
   const base = list[randInt(0, list.length - 1)];
-  return {
-    ...base,
-    amount: base.amount + Math.floor(floor / 8),
-    turns: base.turns + floor * 2,
-  };
+  const scaled = { ...base, turns: base.turns + floor * 2 };
+  if (base.amount != null) {
+    scaled.amount = base.amount + Math.floor(floor / 8);
+  }
+  if (base.resistPct != null) {
+    scaled.resistPct = Math.min(0.85, base.resistPct + floor * 0.004);
+  }
+  if (base.dodgePct != null) {
+    scaled.dodgePct = Math.min(0.4, base.dodgePct + floor * 0.003);
+  }
+  if (base.goldPct != null) {
+    scaled.goldPct = Math.min(1.2, base.goldPct + floor * 0.008);
+  }
+  return scaled;
 }
 
 export function createLootItem(pos, floor, index, luck = 5) {
@@ -192,6 +237,12 @@ export function createLootItem(pos, floor, index, luck = 5) {
       stat: elixir.stat,
       statLabel: elixir.statLabel,
       amount: elixir.amount,
+      effect: elixir.effect,
+      effectLabel: elixir.effectLabel,
+      resistPct: elixir.resistPct,
+      dodgePct: elixir.dodgePct,
+      goldPct: elixir.goldPct,
+      haste: elixir.haste,
       turns: elixir.turns,
       color: elixir.color,
       collected: false,
@@ -294,13 +345,33 @@ function refreshHeroDerivedStats(hero) {
 
 function applyElixirBuff(hero, item) {
   hero.activeBuffs = hero.activeBuffs ?? [];
-  hero[item.stat] = (hero[item.stat] ?? 5) + item.amount;
+  if (item.stat) {
+    hero[item.stat] = (hero[item.stat] ?? 5) + item.amount;
+  }
+  if (item.effect === 'poison_resist') {
+    hero.poisonResistPct = (hero.poisonResistPct ?? 0) + (item.resistPct ?? 0);
+  }
+  if (item.effect === 'evasion') {
+    hero.dodgeBonus = (hero.dodgeBonus ?? 0) + (item.dodgePct ?? 0);
+  }
+  if (item.effect === 'gold_bonus') {
+    hero.tempGoldPct = (hero.tempGoldPct ?? 0) + (item.goldPct ?? 0);
+  }
+  if (item.effect === 'haste') {
+    hero.hasteBonus = (hero.hasteBonus ?? 0) + (item.haste ?? 0);
+  }
   const buff = {
     id: `buff-${Date.now()}-${randInt(100, 999)}`,
     type: item.type,
     stat: item.stat,
     statLabel: item.statLabel,
     amount: item.amount,
+    effect: item.effect,
+    effectLabel: item.effectLabel,
+    resistPct: item.resistPct,
+    dodgePct: item.dodgePct,
+    goldPct: item.goldPct,
+    haste: item.haste,
     turns: item.turns,
     name: item.name,
   };
@@ -315,7 +386,21 @@ export function tickHeroBuffs(hero) {
   for (const buff of hero.activeBuffs) {
     buff.turns -= 1;
     if (buff.turns <= 0) {
-      hero[buff.stat] = Math.max(1, (hero[buff.stat] ?? 1) - buff.amount);
+      if (buff.stat) {
+        hero[buff.stat] = Math.max(1, (hero[buff.stat] ?? 1) - (buff.amount ?? 0));
+      }
+      if (buff.effect === 'poison_resist') {
+        hero.poisonResistPct = Math.max(0, (hero.poisonResistPct ?? 0) - (buff.resistPct ?? 0));
+      }
+      if (buff.effect === 'evasion') {
+        hero.dodgeBonus = Math.max(0, (hero.dodgeBonus ?? 0) - (buff.dodgePct ?? 0));
+      }
+      if (buff.effect === 'gold_bonus') {
+        hero.tempGoldPct = Math.max(0, (hero.tempGoldPct ?? 0) - (buff.goldPct ?? 0));
+      }
+      if (buff.effect === 'haste') {
+        hero.hasteBonus = Math.max(0, (hero.hasteBonus ?? 0) - (buff.haste ?? 0));
+      }
       expired.push(buff);
     }
   }
@@ -446,8 +531,12 @@ export function purchaseFromMerchant(hero, item) {
       name: item.name,
       statLabel: item.statLabel,
       amount: item.amount,
+      effectLabel: item.effectLabel,
+      resistPct: item.resistPct,
+      dodgePct: item.dodgePct,
+      goldPct: item.goldPct,
       turns: item.turns,
-      total: hero[item.stat],
+      total: item.stat ? hero[item.stat] : null,
       buffId: buff.id,
       price: item.price,
     };
@@ -499,7 +588,7 @@ export function collectItem(hero, item) {
   if (item.type === 'gold') {
     const bonus = prof.goldBonus ? Math.floor(item.value * prof.goldBonus) : 0;
     const luckBonus = luckGoldBonus(hero, item.value);
-    const skillBonus = Math.floor((item.value + bonus) * (hero.bonusGoldPct ?? 0));
+    const skillBonus = Math.floor((item.value + bonus) * ((hero.bonusGoldPct ?? 0) + (hero.tempGoldPct ?? 0)));
     const total = item.value + bonus + luckBonus + skillBonus;
     hero.gold += total;
     return { type: 'gold', value: total, bonus, luckBonus, skillBonus };
@@ -530,8 +619,12 @@ export function collectItem(hero, item) {
       name: item.name,
       statLabel: item.statLabel,
       amount: item.amount,
+      effectLabel: item.effectLabel,
+      resistPct: item.resistPct,
+      dodgePct: item.dodgePct,
+      goldPct: item.goldPct,
       turns: item.turns,
-      total: hero[item.stat],
+      total: item.stat ? hero[item.stat] : null,
       buffId: buff.id,
     };
   }
@@ -689,6 +782,10 @@ export function itemPriority(item, hero) {
   }
   if (isElixirItem(item)) {
     const hpRatio = hero.hp / Math.max(1, hero.maxHp);
+    if (item.effect === 'poison_resist') return hero.poison > 0 ? 20 : 11;
+    if (item.effect === 'evasion') return 14;
+    if (item.effect === 'gold_bonus') return 12;
+    if (item.effect === 'haste') return 13;
     if (item.stat === 'endurance') return hpRatio < 0.6 ? 18 : 10;
     if (item.stat === 'strength') return 12;
     if (item.stat === 'intelligence' && hero.maxMana) return 11;

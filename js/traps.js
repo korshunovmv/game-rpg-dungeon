@@ -162,7 +162,11 @@ export function triggerTrap(trap, hero, map, traps) {
       break;
     case 'poison':
       result.damage = damage;
-      hero.poison = (hero.poison ?? 0) + (type.poisonTicks ?? 3);
+      {
+        const resist = Math.min(0.9, hero.poisonResistPct ?? 0);
+        const ticks = Math.max(1, Math.ceil((type.poisonTicks ?? 3) * (1 - resist)));
+        hero.poison = (hero.poison ?? 0) + ticks;
+      }
       result.message = `Ядовитый газ! −${damage} HP, отравление`;
       break;
     case 'fire':
@@ -200,7 +204,8 @@ export function triggerTrap(trap, hero, map, traps) {
 export function tickPoison(hero) {
   if (!hero.poison || hero.poison <= 0) return null;
   hero.poison -= 1;
-  const dmg = 3;
+  const resist = Math.min(0.85, hero.poisonResistPct ?? 0);
+  const dmg = Math.max(1, Math.ceil(3 * (1 - resist)));
   hero.hp -= dmg;
   return { damage: dmg, remaining: hero.poison };
 }

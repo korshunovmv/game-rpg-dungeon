@@ -309,7 +309,22 @@ export class Game {
       this.log(`${result.name} → флаконы маны: ${result.count}`, 'loot');
       this.renderer.addParticle(x, y, '#4488ff', 25);
     } else if (result.type === 'elixir') {
-      this.log(`${result.name}: +${result.amount} ${result.statLabel} на ${result.turns} ход.`, 'loot');
+      if (result.statLabel && result.amount != null) {
+        this.log(`${result.name}: +${result.amount} ${result.statLabel} на ${result.turns} ход.`, 'loot');
+      } else if (result.effectLabel) {
+        if (result.effectLabel === 'сопротивление яду') {
+          const pct = Math.round((result.resistPct ?? 0) * 100);
+          this.log(`${result.name}: ${pct}% ${result.effectLabel} на ${result.turns} ход.`, 'loot');
+        } else if (result.effectLabel === 'шанс уклонения') {
+          const pct = Math.round((result.dodgePct ?? 0) * 100);
+          this.log(`${result.name}: +${pct}% ${result.effectLabel} на ${result.turns} ход.`, 'loot');
+        } else if (result.effectLabel === 'бонус золота') {
+          const pct = Math.round((result.goldPct ?? 0) * 100);
+          this.log(`${result.name}: +${pct}% к золоту на ${result.turns} ход.`, 'loot');
+        } else {
+          this.log(`${result.name}: ${result.effectLabel} на ${result.turns} ход.`, 'loot');
+        }
+      }
       this.renderer.addParticle(x, y, '#bb88ff', 28);
     } else if (result.type === 'weapon') {
       const label = formatRarityLabel(result.rarity);
@@ -620,9 +635,13 @@ export class Game {
     }
 
     if (this.hero.slowed > 0) {
-      this.hero.slowed -= 1;
-      this.log('Заклинивание... пропуск хода', 'trap');
-      return;
+      if (this.hero.hasteBonus > 0 && Math.random() < 0.65) {
+        this.hero.slowed = Math.max(0, this.hero.slowed - 1);
+      } else {
+        this.hero.slowed -= 1;
+        this.log('Заклинивание... пропуск хода', 'trap');
+        return;
+      }
     }
 
     this.tryUseConsumables();

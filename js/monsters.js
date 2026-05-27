@@ -123,6 +123,9 @@ export function calcMonsterDamage(monster, hero) {
 }
 
 export function applyMonsterAttack(hero, monster) {
+  if (hero?.dodgeBonus && Math.random() < Math.min(0.75, hero.dodgeBonus)) {
+    return 0;
+  }
   const dmg = calcMonsterDamage(monster, hero);
   if (dmg > 0) hero.hp -= dmg;
   return dmg;
