@@ -5,7 +5,7 @@ import { key, manhattan, chebyshev, isMeleeAdjacent } from './utils.js';
 import { getAttackRange, getItemSearchRange, canDisarmTraps } from './classes.js';
 import { getMonsterAttackRange } from './monsters.js';
 import { getDisarmableTrap } from './traps.js';
-import { isHealingItem, itemPriority } from './items.js';
+import { isHealingItem, isElixirItem, itemPriority } from './items.js';
 import { hasWorthwhilePurchase, merchantHasStock } from './merchant.js';
 import { getAliveBoss } from './bosses.js';
 import { chestPriority, isUnopenedChest } from './chests.js';
@@ -497,6 +497,7 @@ function isLockedReward(item) {
 
 function isCollectibleWhileLowHp(item) {
   return isHealingItem(item)
+    || isElixirItem(item)
     || item.type === 'gold'
     || item.type === 'locked_key'
     || isLockedReward(item);

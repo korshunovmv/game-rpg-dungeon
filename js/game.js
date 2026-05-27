@@ -6,7 +6,7 @@ import { key, isMeleeAdjacent } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
 import { getTrapAt, triggerTrap, tickPoison, disarmTrap, revealTrapsForThief } from './traps.js';
-import { useHealer, purchaseFromMerchant, useHealFlask, useManaFlask, getHealFlaskCount, getManaFlaskCount } from './items.js';
+import { useHealer, purchaseFromMerchant, useHealFlask, useManaFlask, getHealFlaskCount, getManaFlaskCount, tickHeroBuffs } from './items.js';
 import { formatRarityLabel } from './rarity.js';
 import { usesMana } from './classes.js';
 import { pickBestPurchase, merchantHasStock, hasWorthwhilePurchase } from './merchant.js';
@@ -306,6 +306,9 @@ export class Game {
     } else if (result.type === 'mana_flask') {
       this.log(`${result.name} → флаконы маны: ${result.count}`, 'loot');
       this.renderer.addParticle(x, y, '#4488ff', 25);
+    } else if (result.type === 'elixir') {
+      this.log(`${result.name}: +${result.amount} ${result.statLabel} на ${result.turns} ход.`, 'loot');
+      this.renderer.addParticle(x, y, '#bb88ff', 28);
     } else if (result.type === 'weapon') {
       const label = formatRarityLabel(result.rarity);
       if (result.equipped) {
@@ -568,6 +571,10 @@ export class Game {
     if (this.paused || this.state !== 'playing') return;
 
     this.frame += 1;
+    const expiredBuffs = tickHeroBuffs(this.hero);
+    for (const buff of expiredBuffs) {
+      this.log(`Эффект спал: ${buff.name} (−${buff.amount} ${buff.statLabel})`, 'info');
+    }
     this.revealAroundHero();
 
     tickMonsterCurses(this.monsters);

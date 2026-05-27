@@ -1,6 +1,6 @@
 import { randInt, shuffle, manhattan } from './utils.js';
 import { isWalkable } from './dungeon.js';
-import { WEAPONS, ARMORS, POTIONS, collectItem } from './items.js';
+import { WEAPONS, ARMORS, POTIONS, ELIXIRS, collectItem } from './items.js';
 import { canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 import { buildWeapon, buildArmor, rarityPriorityBonus } from './rarity.js';
 
@@ -24,6 +24,21 @@ function createRareChestLoot(floor, luck = 5) {
       name: potion.name,
       heal: potion.heal + Math.floor(floor * 3) + 10,
       color: potion.color,
+      rare: true,
+    };
+  }
+
+  if (roll < 0.56) {
+    const list = Object.values(ELIXIRS);
+    const elixir = list[randInt(0, list.length - 1)];
+    return {
+      type: elixir.id,
+      name: elixir.name,
+      stat: elixir.stat,
+      statLabel: elixir.statLabel,
+      amount: elixir.amount + Math.floor(floor / 7),
+      turns: elixir.turns + floor * 2,
+      color: elixir.color,
       rare: true,
     };
   }
@@ -68,6 +83,7 @@ export function describeChestLoot(loot) {
   if (loot.type === 'gold') return `${loot.value} золота`;
   if (loot.type.startsWith('potion')) return loot.name;
   if (loot.type.startsWith('mana_potion')) return loot.name;
+  if (loot.type.startsWith('elixir_')) return `${loot.name} (+${loot.amount} ${loot.statLabel})`;
   if (loot.type === 'weapon') return `${loot.name} (+${loot.atk} ATK)`;
   if (loot.type === 'armor') {
     const hpNote = loot.hp ? `, +${loot.hp} HP` : '';
@@ -161,6 +177,9 @@ export function chestPriority(chest, hero) {
     if (!hero.maxMana) return 700;
     const missing = hero.maxMana - hero.mana;
     return missing > 0 ? 870 + loot.restore / missing : 680;
+  }
+  if (loot.type.startsWith('elixir_')) {
+    return 875 + loot.amount * 2;
   }
   return 860;
 }

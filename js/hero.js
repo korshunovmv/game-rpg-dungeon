@@ -47,6 +47,7 @@ export function createHero(spawn, professionId = 'warrior') {
     facing: 'down',
     animFrame: 0,
     skills: {},
+    activeBuffs: [],
   };
   initHeroSkills(hero);
   if (professionId === 'mage' || professionId === 'necromancer') {

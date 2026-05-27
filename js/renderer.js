@@ -381,6 +381,27 @@ export class Renderer {
       return;
     }
 
+    if (item.type.startsWith('elixir_')) {
+      const color = item.color ?? '#cc66ff';
+      ctx.fillStyle = '#0d0d16';
+      ctx.fillRect(sx + 5, sy + 13 + bob, 6, 1);
+      ctx.fillStyle = '#e2d8f2';
+      ctx.fillRect(sx + 5, sy + 5 + bob, 6, 7);
+      ctx.fillRect(sx + 6, sy + 3 + bob, 4, 2);
+      ctx.fillStyle = '#b9aacd';
+      ctx.fillRect(sx + 5, sy + 5 + bob, 1, 7);
+      ctx.fillRect(sx + 10, sy + 5 + bob, 1, 7);
+      ctx.fillStyle = '#7a532f';
+      ctx.fillRect(sx + 6, sy + 2 + bob, 4, 1);
+      ctx.fillStyle = color;
+      ctx.fillRect(sx + 6, sy + 8 + bob, 4, 4);
+      ctx.fillStyle = '#ffffff77';
+      ctx.fillRect(sx + 6, sy + 8 + bob, 1, 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx + 8, sy + 6 + bob, 1, 1);
+      return;
+    }
+
     if (item.type === 'locked_key') {
       ctx.fillStyle = '#ffdd66';
       ctx.fillRect(sx + 5, sy + 7 + bob, 6, 2);

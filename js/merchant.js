@@ -1,5 +1,5 @@
 import { randInt, shuffle } from './utils.js';
-import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS } from './items.js';
+import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS, ELIXIRS } from './items.js';
 import { luckMerchantChance } from './luck.js';
 import { canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 import { buildWeapon, buildArmor, getRarityDef, getItemRarity } from './rarity.js';
@@ -62,6 +62,21 @@ export function generateMerchantStock(floor) {
     restore: manaPotion.restore + Math.floor(floor * 2),
     color: manaPotion.color,
     price: 10 + Math.floor(floor * 3),
+    sold: false,
+  });
+
+  const elixirList = Object.values(ELIXIRS);
+  const elixir = elixirList[randInt(0, elixirList.length - 1)];
+  stock.push({
+    id: `s-e-${Date.now()}`,
+    type: elixir.id,
+    name: elixir.name,
+    stat: elixir.stat,
+    statLabel: elixir.statLabel,
+    amount: elixir.amount + Math.floor(floor / 8),
+    turns: elixir.turns + floor * 2,
+    color: elixir.color,
+    price: 14 + Math.floor(floor * 4),
     sold: false,
   });
 
@@ -175,6 +190,17 @@ export function shopItemScore(item, hero) {
     const missing = hero.maxMana - hero.mana;
     if (missing < 4) return 0;
     return (item.restore / item.price) * (hero.mana / hero.maxMana < 0.5 ? 2 : 1);
+  }
+
+  if (item.type.startsWith('elixir_')) {
+    if (item.stat === 'intelligence' && !hero.maxMana) return 0.2;
+    const hpRatio = hero.hp / Math.max(1, hero.maxHp);
+    if (item.stat === 'endurance') return hpRatio < 0.6 ? 1.6 : 0.9;
+    if (item.stat === 'strength') return 1.25;
+    if (item.stat === 'intelligence') return 1.2;
+    if (item.stat === 'dexterity') return 1.1;
+    if (item.stat === 'perception') return 1.0;
+    return 0.8;
   }
 
   if (item.type === 'weapon') {

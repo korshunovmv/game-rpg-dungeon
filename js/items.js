@@ -3,7 +3,7 @@ import { getProfession, canHeroEquipWeapon, canHeroEquipArmor } from './classes.
 import { applyLuckLootWeights, luckGoldBonus } from './luck.js';
 import { collectLegacyGrave } from './legacy.js';
 import { resolveWeaponSpriteId, resolveArmorSpriteId } from './sprites.js';
-import { getStrengthAtkBonus, getEnduranceHpBonus } from './attributes.js';
+import { getStrengthAtkBonus, getEnduranceHpBonus, getHeroMaxMana } from './attributes.js';
 import {
   buildWeapon,
   buildArmor,
@@ -26,6 +26,54 @@ export const MANA_POTIONS = {
     name: 'Большой флакон маны',
     restore: 28,
     color: '#66aaff',
+  },
+};
+
+export const ELIXIRS = {
+  elixir_strength: {
+    id: 'elixir_strength',
+    name: 'Эликсир силы',
+    stat: 'strength',
+    statLabel: 'Сила',
+    amount: 2,
+    turns: 30,
+    color: '#d86a3d',
+  },
+  elixir_dexterity: {
+    id: 'elixir_dexterity',
+    name: 'Эликсир ловкости',
+    stat: 'dexterity',
+    statLabel: 'Ловкость',
+    amount: 2,
+    turns: 30,
+    color: '#4fd07a',
+  },
+  elixir_intelligence: {
+    id: 'elixir_intelligence',
+    name: 'Эликсир интеллекта',
+    stat: 'intelligence',
+    statLabel: 'Интеллект',
+    amount: 2,
+    turns: 30,
+    color: '#6f7dff',
+  },
+  elixir_perception: {
+    id: 'elixir_perception',
+    name: 'Эликсир восприятия',
+    stat: 'perception',
+    statLabel: 'Восприятие',
+    amount: 2,
+    turns: 30,
+    color: '#f1cc66',
+  },
+  elixir_endurance: {
+    id: 'elixir_endurance',
+    name: 'Эликсир выносливости',
+    stat: 'endurance',
+    statLabel: 'Выносливость',
+    amount: 2,
+    turns: 30,
+    color: '#b86cff',
   },
 };
 
@@ -53,6 +101,7 @@ const LOOT_TABLE = [
   { type: 'potion_large', weight: 6 },
   { type: 'mana_potion', weight: 8 },
   { type: 'mana_potion_large', weight: 4 },
+  { type: 'elixir', weight: 8 },
   { type: 'weapon', weight: 18 },
   { type: 'armor', weight: 16 },
 ];
@@ -78,6 +127,16 @@ function pickArmorBase(floor) {
   const pool = [...ARMORS];
   const minIdx = Math.min(Math.floor(floor / 2), pool.length - 1);
   return pool[randInt(minIdx, pool.length - 1)];
+}
+
+function pickElixir(floor) {
+  const list = Object.values(ELIXIRS);
+  const base = list[randInt(0, list.length - 1)];
+  return {
+    ...base,
+    amount: base.amount + Math.floor(floor / 8),
+    turns: base.turns + floor * 2,
+  };
 }
 
 export function createLootItem(pos, floor, index, luck = 5) {
@@ -118,6 +177,23 @@ export function createLootItem(pos, floor, index, luck = 5) {
       name: manaPotion.name,
       restore: manaPotion.restore + Math.floor(floor * 2),
       color: manaPotion.color,
+      collected: false,
+    };
+  }
+
+  if (kind === 'elixir') {
+    const elixir = pickElixir(floor);
+    return {
+      id: `i-${index}-${Date.now()}`,
+      x: pos.x,
+      y: pos.y,
+      type: elixir.id,
+      name: elixir.name,
+      stat: elixir.stat,
+      statLabel: elixir.statLabel,
+      amount: elixir.amount,
+      turns: elixir.turns,
+      color: elixir.color,
       collected: false,
     };
   }
@@ -204,6 +280,50 @@ export function recalcMaxHp(hero) {
     hero.hp += hero.maxHp - prevMax;
   }
   hero.hp = Math.min(hero.hp, hero.maxHp);
+}
+
+function refreshHeroDerivedStats(hero) {
+  recalcMaxHp(hero);
+  const nextMaxMana = getHeroMaxMana(hero);
+  if (hero.maxMana != null || nextMaxMana > 0) {
+    const prevMaxMana = hero.maxMana ?? 0;
+    hero.maxMana = nextMaxMana;
+    hero.mana = Math.min(hero.maxMana, (hero.mana ?? hero.maxMana) + Math.max(0, hero.maxMana - prevMaxMana));
+  }
+}
+
+function applyElixirBuff(hero, item) {
+  hero.activeBuffs = hero.activeBuffs ?? [];
+  hero[item.stat] = (hero[item.stat] ?? 5) + item.amount;
+  const buff = {
+    id: `buff-${Date.now()}-${randInt(100, 999)}`,
+    type: item.type,
+    stat: item.stat,
+    statLabel: item.statLabel,
+    amount: item.amount,
+    turns: item.turns,
+    name: item.name,
+  };
+  hero.activeBuffs.push(buff);
+  refreshHeroDerivedStats(hero);
+  return buff;
+}
+
+export function tickHeroBuffs(hero) {
+  if (!hero?.activeBuffs?.length) return [];
+  const expired = [];
+  for (const buff of hero.activeBuffs) {
+    buff.turns -= 1;
+    if (buff.turns <= 0) {
+      hero[buff.stat] = Math.max(1, (hero[buff.stat] ?? 1) - buff.amount);
+      expired.push(buff);
+    }
+  }
+  if (expired.length) {
+    hero.activeBuffs = hero.activeBuffs.filter((buff) => buff.turns > 0);
+    refreshHeroDerivedStats(hero);
+  }
+  return expired;
 }
 
 function equipWeapon(hero, weapon) {
@@ -319,6 +439,20 @@ export function purchaseFromMerchant(hero, item) {
     };
   }
 
+  if (item.type.startsWith('elixir_')) {
+    const buff = applyElixirBuff(hero, item);
+    return {
+      type: 'elixir',
+      name: item.name,
+      statLabel: item.statLabel,
+      amount: item.amount,
+      turns: item.turns,
+      total: hero[item.stat],
+      buffId: buff.id,
+      price: item.price,
+    };
+  }
+
   if (item.type === 'weapon') {
     if (!canHeroEquipWeapon(hero, item)) return null;
 
@@ -386,6 +520,19 @@ export function collectItem(hero, item) {
       type: 'mana_flask',
       name: item.name,
       count: hero.manaFlasks.length,
+    };
+  }
+
+  if (item.type.startsWith('elixir_')) {
+    const buff = applyElixirBuff(hero, item);
+    return {
+      type: 'elixir',
+      name: item.name,
+      statLabel: item.statLabel,
+      amount: item.amount,
+      turns: item.turns,
+      total: hero[item.stat],
+      buffId: buff.id,
     };
   }
 
@@ -511,6 +658,10 @@ export function isManaItem(item) {
   return item.type.startsWith('mana_potion');
 }
 
+export function isElixirItem(item) {
+  return item.type.startsWith('elixir_');
+}
+
 export function itemPriority(item, hero) {
   if (item.type === 'grave') return 1000;
   if (isManaItem(item) && hero.maxMana) {
@@ -535,6 +686,15 @@ export function itemPriority(item, hero) {
     const next = armorScore(item);
     const bonus = rarityPriorityBonus(item);
     return next > cur ? (next - cur) * 8 + bonus : 1 + bonus * 0.1;
+  }
+  if (isElixirItem(item)) {
+    const hpRatio = hero.hp / Math.max(1, hero.maxHp);
+    if (item.stat === 'endurance') return hpRatio < 0.6 ? 18 : 10;
+    if (item.stat === 'strength') return 12;
+    if (item.stat === 'intelligence' && hero.maxMana) return 11;
+    if (item.stat === 'dexterity') return 10;
+    if (item.stat === 'perception') return 9;
+    return 8;
   }
   return 5;
 }

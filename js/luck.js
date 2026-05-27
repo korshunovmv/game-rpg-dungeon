@@ -28,6 +28,8 @@ export function applyLuckLootWeights(table, luck = 5) {
       weight += Math.floor(luck * 0.4);
     } else if (entry.type === 'potion') {
       weight += Math.floor(luck * 0.2);
+    } else if (entry.type === 'elixir') {
+      weight += Math.floor(luck * 0.35);
     } else if (entry.type === 'gold') {
       weight = Math.max(8, weight - Math.floor(luck * 0.25));
     }
