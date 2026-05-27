@@ -15,6 +15,93 @@ const DIRS = [
   [-1, -1], [1, -1], [1, 1], [-1, 1],
 ];
 
+export function findApproachPath(map, sx, sy, tx, ty, blocked = new Set()) {
+  let best = null;
+
+  for (const [dx, dy] of DIRS) {
+    const ax = tx + dx;
+    const ay = ty + dy;
+    const ak = key(ax, ay);
+    if (!isWalkable(map, ax, ay) || blocked.has(ak)) continue;
+
+    const path = findPath(map, sx, sy, ax, ay, blocked);
+    const onTile = sx === ax && sy === ay;
+    if (!path?.length && !onTile) continue;
+
+    const len = path?.length ?? 0;
+    if (!best || len < best.path.length) {
+      best = { path: path ?? [], goal: { x: ax, y: ay, targetX: tx, targetY: ty } };
+    }
+  }
+
+  return best;
+}
+
+function findFrontierPath(map, hx, hy, explored, blocked) {
+  const candidates = [];
+
+  for (const ek of explored) {
+    const [x, y] = ek.split(',').map(Number);
+    if (!isWalkable(map, x, y)) continue;
+
+    let isFrontier = false;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!isWalkable(map, nx, ny)) continue;
+      if (!explored.has(key(nx, ny))) {
+        isFrontier = true;
+        break;
+      }
+    }
+
+    if (isFrontier) {
+      candidates.push({ x, y, dist: manhattan(hx, hy, x, y) });
+    }
+  }
+
+  candidates.sort((a, b) => a.dist - b.dist);
+
+  for (const tile of candidates.slice(0, 35)) {
+    const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
+    if (path?.length) {
+      return { path, goal: tile };
+    }
+  }
+
+  return null;
+}
+
+function findExplorationPath(map, hx, hy, explored, blocked) {
+  const frontier = findFrontierPath(map, hx, hy, explored, blocked);
+  if (frontier) return frontier;
+
+  const unexplored = [];
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (!isWalkable(map, x, y)) continue;
+      if (!explored.has(key(x, y))) {
+        unexplored.push({ x, y, dist: manhattan(hx, hy, x, y) });
+      }
+    }
+  }
+
+  unexplored.sort((a, b) => a.dist - b.dist);
+
+  for (const tile of unexplored.slice(0, 50)) {
+    const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
+    if (path?.length) {
+      return { path, goal: tile };
+    }
+  }
+
+  return null;
+}
+
+function findMonsterApproach(map, hx, hy, monster, blocked) {
+  return findApproachPath(map, hx, hy, monster.x, monster.y, blocked);
+}
+
 export function findPath(map, sx, sy, gx, gy, blocked = new Set()) {
   if (sx === gx && sy === gy) return [];
   if (!isWalkable(map, gx, gy)) return null;
@@ -277,9 +364,9 @@ export function getExplorationTarget(
       };
     }
 
-    const focusPath = findPath(map, hx, hy, focusMonster.x, focusMonster.y, blocked);
-    if (focusPath?.length) {
-      return { type: 'chase', path: focusPath, goal: focusMonster };
+    const focusApproach = findMonsterApproach(map, hx, hy, focusMonster, blocked);
+    if (focusApproach?.path.length) {
+      return { type: 'chase', path: focusApproach.path, goal: focusMonster };
     }
   }
 
@@ -366,7 +453,7 @@ export function getExplorationTarget(
   if (currentRoom) {
     const roomChests = getUnopenedChestsInRoom(currentRoom, chests);
     const roomChest = findNearestChestPath(map, hx, hy, roomChests, blocked, hero);
-    if (roomChest) {
+    if (roomChest?.path.length) {
       return { type: 'chest-move', path: roomChest.path, goal: roomChest.goal };
     }
 
@@ -395,46 +482,27 @@ export function getExplorationTarget(
     return { type: 'loot', target: onItemFallback };
   }
 
+  const explorePath = findExplorationPath(map, hx, hy, explored, blocked);
+  if (explorePath) {
+    return { type: 'explore', path: explorePath.path, goal: explorePath.goal };
+  }
+
   const visibleMonster = monsters
     .filter((m) => m.alive && explored.has(key(m.x, m.y)))
     .map((m) => ({ monster: m, dist: manhattan(hx, hy, m.x, m.y) }))
     .sort((a, b) => a.dist - b.dist)[0];
 
   if (visibleMonster && visibleMonster.dist <= 10) {
-    const path = findPath(
-      map, hx, hy,
-      visibleMonster.monster.x,
-      visibleMonster.monster.y,
-      blocked
-    );
-    if (path?.length) {
-      return { type: 'move', path, goal: visibleMonster.monster };
-    }
-  }
-
-  const unexplored = [];
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      if (!isWalkable(map, x, y)) continue;
-      if (!explored.has(key(x, y))) {
-        unexplored.push({ x, y, dist: manhattan(hx, hy, x, y) });
-      }
-    }
-  }
-
-  unexplored.sort((a, b) => a.dist - b.dist);
-
-  for (const tile of unexplored.slice(0, 40)) {
-    const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
-    if (path?.length) {
-      return { type: 'explore', path, goal: tile };
+    const approach = findMonsterApproach(map, hx, hy, visibleMonster.monster, blocked);
+    if (approach?.path.length) {
+      return { type: 'move', path: approach.path, goal: visibleMonster.monster };
     }
   }
 
   if (boss) {
-    const path = findPath(map, hx, hy, boss.x, boss.y, blocked);
-    if (path?.length) {
-      return { type: 'move', path, goal: boss };
+    const bossApproach = findMonsterApproach(map, hx, hy, boss, blocked);
+    if (bossApproach?.path.length) {
+      return { type: 'move', path: bossApproach.path, goal: boss };
     }
   }
 

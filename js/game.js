@@ -675,18 +675,19 @@ export class Game {
         this.currentPath = [...action.path];
       }
     } else if (action.type === 'move' || action.type === 'explore' || action.type === 'stairs') {
-      if (!this.currentPath.length && action.path) {
+      if (action.path?.length) {
         this.currentPath = [...action.path];
       }
     }
 
     if (this.currentPath.length) {
       const next = this.currentPath.shift();
-      const blocked = this.monsters.some(
+      const blocker = this.monsters.find(
         (m) => m.alive && m.x === next.x && m.y === next.y
       );
-      if (blocked) {
+      if (blocker) {
         this.currentPath = [];
+        this.doCombat(blocker, false, getHeroFightDistance(this.hero, blocker));
         return;
       }
 
