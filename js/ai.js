@@ -154,7 +154,7 @@ function findFrontierPath(map, hx, hy, explored, blocked, retreatFrom = null) {
     if (retreatFrom) {
       const now = manhattan(hx, hy, retreatFrom.x, retreatFrom.y);
       const then = manhattan(tile.x, tile.y, retreatFrom.x, retreatFrom.y);
-      if (then > now) continue;
+      if (then < now) continue;
     }
 
     const path = findPath(map, hx, hy, tile.x, tile.y, blocked);
@@ -228,12 +228,16 @@ function findExplorationPath(map, hx, hy, explored, blocked, retreatFrom = null)
     for (let x = 0; x < MAP_W; x++) {
       if (!isWalkable(map, x, y)) continue;
       if (!explored.has(key(x, y))) {
-        unexplored.push({ x, y });
+        const dist = manhattan(hx, hy, x, y);
+        const tie = (((x * 73856093) ^ (y * 19349663)) >>> 0) & 1023;
+        unexplored.push({ x, y, dist, tie });
       }
     }
   }
 
-  for (const tile of unexplored.slice(0, 40)) {
+  unexplored.sort((a, b) => a.dist - b.dist || a.tie - b.tie);
+
+  for (const tile of unexplored.slice(0, 60)) {
     const approach = findApproachPath(map, hx, hy, tile.x, tile.y, blocked);
     if (approach?.path.length) {
       return { path: approach.path, goal: approach.goal };
