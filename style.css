@@ -22,13 +22,20 @@ body {
   color: var(--text);
   font-family: 'Press Start 2P', monospace;
   min-height: 100vh;
+  min-height: 100dvh;
   image-rendering: pixelated;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 .app {
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
 .header {
@@ -63,15 +70,22 @@ body {
 
 .game-wrap {
   position: relative;
+  width: 100%;
+  max-width: 640px;
   border: 4px solid var(--border);
   box-shadow: 0 0 0 2px var(--bg), 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 #game {
   display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 640 / 480;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: #000;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .overlay {
@@ -139,9 +153,12 @@ body {
   align-items: center;
   gap: 6px;
   transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.class-card:hover {
+.class-card:hover,
+.class-card:active {
   border-color: var(--accent);
   background: #252545;
 }
@@ -221,9 +238,12 @@ body {
   cursor: pointer;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.skill-card:hover {
+.skill-card:hover,
+.skill-card:active {
   border-color: var(--success);
   background: #252545;
 }
@@ -376,9 +396,12 @@ body {
   border: none;
   cursor: pointer;
   transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.btn:hover {
+.btn:hover,
+.btn:active {
   background: #5555aa;
 }
 
@@ -387,18 +410,219 @@ body {
   color: var(--accent);
 }
 
-.btn-accent:hover {
+.btn-accent:hover,
+.btn-accent:active {
   background: #886600;
 }
 
 @media (max-width: 700px) {
+  .app {
+    padding-top: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .header {
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    font-size: 14px;
+  }
+
+  .subtitle {
+    font-size: 7px;
+  }
+
   .main {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .game-wrap {
+    align-self: center;
+    width: min(100%, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
   }
 
   .panel {
     width: 100%;
-    max-width: 640px;
+    max-width: none;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    position: sticky;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 5;
+    padding-top: 4px;
+  }
+
+  .controls .btn {
+    min-height: 44px;
+    padding: 12px 6px;
+    font-size: 6px;
+    line-height: 1.4;
+  }
+
+  .log {
+    min-height: 120px;
+    max-height: 160px;
+  }
+
+  .class-select,
+  .skill-select {
+    padding: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .class-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: none;
+    width: 100%;
+  }
+
+  .class-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    max-width: 50%;
+    justify-self: center;
+  }
+
+  .overlay {
+    font-size: 9px;
+    padding: 12px;
+    white-space: pre-line;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+  }
+
+  .header h1 {
+    font-size: 12px;
+  }
+
+  .version {
+    display: none;
+  }
+
+  .panel section {
+    padding: 10px;
+  }
+
+  .panel h2 {
+    font-size: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
+
+  .stat-row {
+    font-size: 6px;
+    margin-bottom: 6px;
+  }
+
+  .skills-list,
+  .legends-list {
+    max-height: 64px;
+  }
+
+  .legends-panel .legends-list {
+    max-height: 48px;
+  }
+
+  .class-select h2,
+  .skill-select h2 {
+    font-size: 9px;
+  }
+
+  .class-name {
+    font-size: 7px;
+  }
+
+  .class-desc {
+    font-size: 5px;
+  }
+
+  .skill-card {
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  .controls .btn {
+    font-size: 5px;
+  }
+}
+
+@media (max-width: 360px) {
+  .header h1 {
+    font-size: 10px;
+  }
+
+  .subtitle {
+    font-size: 6px;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .controls .btn {
+    font-size: 6px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .app {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .header {
+    margin-bottom: 8px;
+  }
+
+  .header h1 {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .subtitle,
+  .version {
+    display: none;
+  }
+
+  .main {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .game-wrap {
+    flex: 0 0 min(52vw, 420px);
+    width: min(52vw, 420px);
+  }
+
+  .panel {
+    flex: 1;
+    min-width: 0;
+    max-height: calc(100dvh - 56px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .log {
+    min-height: 80px;
+    max-height: 120px;
+  }
+
+  .controls {
+    position: static;
+    grid-template-columns: 1fr;
   }
 }

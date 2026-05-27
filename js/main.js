@@ -164,10 +164,28 @@ class UI {
   }
 }
 
+function setupMobileViewport(canvas) {
+  canvas.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+  });
+
+  const preventGestureZoom = (event) => {
+    if (event.touches.length > 1) {
+      event.preventDefault();
+    }
+  };
+
+  document.addEventListener('touchmove', preventGestureZoom, { passive: false });
+  window.addEventListener('orientationchange', () => {
+    window.scrollTo(0, 0);
+  });
+}
+
 function main() {
   const canvas = document.getElementById('game');
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
+  setupMobileViewport(canvas);
 
   const versionEl = document.getElementById('app-version');
   if (versionEl) {
