@@ -133,50 +133,67 @@ function drawNecromancer(ctx, sx, sy, facing, bounce) {
 }
 
 function overlayArmorLeather(ctx, sx, sy, color, bounce) {
-  px(ctx, sx, sy, 4, 5, 8, 6, color, bounce);
-  px(ctx, sx, sy, 3, 6, 2, 4, '#664422', bounce);
-  px(ctx, sx, sy, 11, 6, 2, 4, '#664422', bounce);
-  px(ctx, sx, sy, 6, 7, 1, 3, '#553322', bounce);
-  px(ctx, sx, sy, 9, 7, 1, 3, '#553322', bounce);
+  const body = color ?? '#886633';
+  px(ctx, sx, sy, 4, 5, 8, 6, body, bounce);
+  px(ctx, sx, sy, 3, 5, 2, 5, '#664422', bounce);
+  px(ctx, sx, sy, 11, 5, 2, 5, '#664422', bounce);
+  px(ctx, sx, sy, 5, 4, 6, 2, '#996644', bounce);
+  px(ctx, sx, sy, 5, 6, 1, 4, '#553322', bounce);
+  px(ctx, sx, sy, 8, 6, 1, 4, '#553322', bounce);
+  px(ctx, sx, sy, 6, 7, 4, 1, '#aa8866', bounce);
+  px(ctx, sx, sy, 4, 9, 2, 1, '#553322', bounce);
+  px(ctx, sx, sy, 10, 9, 2, 1, '#553322', bounce);
 }
 
 function overlayArmorChain(ctx, sx, sy, color, bounce) {
-  px(ctx, sx, sy, 4, 5, 8, 6, color, bounce);
-  px(ctx, sx, sy, 3, 5, 2, 6, '#666677', bounce);
-  px(ctx, sx, sy, 11, 5, 2, 6, '#666677', bounce);
-  px(ctx, sx, sy, 5, 4, 6, 2, '#9999aa', bounce);
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      px(ctx, sx, sy, 5 + col * 2 + (row % 2), 6 + row * 2, 1, 1, '#ccccdd', bounce);
+  px(ctx, sx, sy, 4, 5, 8, 6, color ?? '#888899', bounce);
+  px(ctx, sx, sy, 3, 4, 2, 7, '#555566', bounce);
+  px(ctx, sx, sy, 11, 4, 2, 7, '#555566', bounce);
+  px(ctx, sx, sy, 5, 3, 6, 2, '#bbbccc', bounce);
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      px(ctx, sx, sy, 4 + col * 2 + (row % 2), 5 + row * 2, 1, 1, row % 2 ? '#ddeeff' : '#99aabb', bounce);
     }
   }
+  px(ctx, sx, sy, 6, 4, 4, 1, '#ccccdd', bounce);
 }
 
 function overlayArmorPlate(ctx, sx, sy, color, bounce) {
-  px(ctx, sx, sy, 3, 5, 10, 6, color, bounce);
-  px(ctx, sx, sy, 3, 4, 2, 3, '#888899', bounce);
-  px(ctx, sx, sy, 11, 4, 2, 3, '#888899', bounce);
-  px(ctx, sx, sy, 5, 4, 6, 2, '#ddddee', bounce);
-  px(ctx, sx, sy, 6, 5, 4, 4, '#ffffff', bounce);
-  px(ctx, sx, sy, 7, 6, 2, 2, '#bbbccc', bounce);
+  const plate = color ?? '#aaaacc';
+  px(ctx, sx, sy, 3, 5, 10, 6, plate, bounce);
+  px(ctx, sx, sy, 2, 4, 3, 3, '#777788', bounce);
+  px(ctx, sx, sy, 11, 4, 3, 3, '#777788', bounce);
+  px(ctx, sx, sy, 5, 3, 6, 2, '#ddddee', bounce);
+  px(ctx, sx, sy, 6, 4, 4, 4, '#eeeeff', bounce);
+  px(ctx, sx, sy, 7, 5, 2, 2, '#ffffff', bounce);
+  px(ctx, sx, sy, 5, 9, 6, 1, '#666677', bounce);
+  px(ctx, sx, sy, 4, 10, 2, 1, '#555566', bounce);
+  px(ctx, sx, sy, 10, 10, 2, 1, '#555566', bounce);
 }
 
 function overlayArmorRobe(ctx, sx, sy, color, bounce) {
-  px(ctx, sx, sy, 4, 5, 8, 8, color, bounce);
+  const robe = color ?? '#6644aa';
+  px(ctx, sx, sy, 4, 5, 8, 8, robe, bounce);
   px(ctx, sx, sy, 3, 6, 2, 7, '#442266', bounce);
   px(ctx, sx, sy, 11, 6, 2, 7, '#442266', bounce);
-  px(ctx, sx, sy, 5, 4, 6, 2, '#8866cc', bounce);
-  px(ctx, sx, sy, 5, 8, 6, 1, '#9977dd', bounce);
-  px(ctx, sx, sy, 7, 4, 2, 2, '#aa88ff', bounce);
+  px(ctx, sx, sy, 5, 2, 6, 4, '#553388', bounce);
+  px(ctx, sx, sy, 6, 1, 4, 2, robe, bounce);
+  px(ctx, sx, sy, 5, 7, 6, 1, '#8866cc', bounce);
+  px(ctx, sx, sy, 7, 3, 2, 2, '#ccaaFF', bounce);
+  px(ctx, sx, sy, 6, 12, 4, 2, '#553388', bounce);
 }
 
 function overlayArmorHide(ctx, sx, sy, color, bounce) {
-  px(ctx, sx, sy, 4, 5, 8, 6, color, bounce);
-  px(ctx, sx, sy, 3, 6, 2, 4, '#553311', bounce);
-  px(ctx, sx, sy, 11, 6, 2, 4, '#553311', bounce);
-  px(ctx, sx, sy, 5, 6, 2, 1, '#aa8866', bounce);
-  px(ctx, sx, sy, 9, 7, 2, 1, '#aa8866', bounce);
-  px(ctx, sx, sy, 7, 8, 2, 2, '#886655', bounce);
+  const fur = color ?? '#775533';
+  px(ctx, sx, sy, 4, 5, 8, 6, fur, bounce);
+  px(ctx, sx, sy, 3, 5, 2, 5, '#553311', bounce);
+  px(ctx, sx, sy, 11, 5, 2, 5, '#553311', bounce);
+  px(ctx, sx, sy, 5, 4, 6, 2, '#996644', bounce);
+  px(ctx, sx, sy, 4, 6, 2, 1, '#ccaa88', bounce);
+  px(ctx, sx, sy, 8, 7, 2, 1, '#ccaa88', bounce);
+  px(ctx, sx, sy, 6, 8, 4, 1, '#aa8866', bounce);
+  px(ctx, sx, sy, 5, 9, 1, 1, '#664422', bounce);
+  px(ctx, sx, sy, 10, 9, 1, 1, '#664422', bounce);
 }
 
 const ARMOR_OVERLAYS = {
@@ -194,99 +211,113 @@ function drawEquippedArmor(ctx, sx, sy, armorId, color, bounce) {
 
 function heldWeaponSword(ctx, sx, sy, facing, color, bounce) {
   const blade = color ?? '#cccccc';
+  const edge = '#eeeeee';
   if (facing === 'right') {
-    px(ctx, sx, sy, 11, 4, 2, 9, blade, bounce);
-    px(ctx, sx, sy, 12, 3, 1, 2, '#ffffaa', bounce);
-    px(ctx, sx, sy, 10, 11, 3, 2, '#888888', bounce);
+    px(ctx, sx, sy, 11, 3, 2, 10, blade, bounce);
+    px(ctx, sx, sy, 12, 2, 1, 3, edge, bounce);
+    px(ctx, sx, sy, 10, 11, 4, 2, '#888888', bounce);
+    px(ctx, sx, sy, 11, 12, 2, 1, '#553322', bounce);
   } else if (facing === 'left') {
-    px(ctx, sx, sy, 3, 4, 2, 9, blade, bounce);
-    px(ctx, sx, sy, 3, 3, 1, 2, '#ffffaa', bounce);
-    px(ctx, sx, sy, 3, 11, 3, 2, '#888888', bounce);
+    px(ctx, sx, sy, 3, 3, 2, 10, blade, bounce);
+    px(ctx, sx, sy, 3, 2, 1, 3, edge, bounce);
+    px(ctx, sx, sy, 2, 11, 4, 2, '#888888', bounce);
+    px(ctx, sx, sy, 3, 12, 2, 1, '#553322', bounce);
   } else if (facing === 'down') {
-    px(ctx, sx, sy, 10, 7, 2, 7, blade, bounce);
-    px(ctx, sx, sy, 11, 6, 1, 2, '#ffffaa', bounce);
-    px(ctx, sx, sy, 9, 13, 4, 1, '#888888', bounce);
+    px(ctx, sx, sy, 10, 6, 2, 8, blade, bounce);
+    px(ctx, sx, sy, 11, 5, 1, 2, edge, bounce);
+    px(ctx, sx, sy, 8, 13, 6, 2, '#888888', bounce);
   } else {
-    px(ctx, sx, sy, 3, 4, 2, 7, blade, bounce);
-    px(ctx, sx, sy, 3, 3, 1, 2, '#ffffaa', bounce);
+    px(ctx, sx, sy, 3, 3, 2, 8, blade, bounce);
+    px(ctx, sx, sy, 3, 2, 1, 2, edge, bounce);
+    px(ctx, sx, sy, 9, 2, 2, 6, '#888888', bounce);
   }
 }
 
 function heldWeaponDagger(ctx, sx, sy, facing, color, bounce) {
   const blade = color ?? '#aaaaaa';
   if (facing === 'right') {
-    px(ctx, sx, sy, 11, 8, 2, 5, blade, bounce);
-    px(ctx, sx, sy, 12, 7, 1, 2, '#ffffaa', bounce);
-    px(ctx, sx, sy, 10, 12, 3, 1, '#664422', bounce);
+    px(ctx, sx, sy, 11, 7, 2, 6, blade, bounce);
+    px(ctx, sx, sy, 12, 6, 1, 2, '#ffffff', bounce);
+    px(ctx, sx, sy, 10, 12, 3, 2, '#664422', bounce);
+    px(ctx, sx, sy, 11, 13, 1, 1, '#553311', bounce);
   } else if (facing === 'left') {
-    px(ctx, sx, sy, 3, 8, 2, 5, blade, bounce);
-    px(ctx, sx, sy, 3, 7, 1, 2, '#ffffaa', bounce);
-    px(ctx, sx, sy, 3, 12, 3, 1, '#664422', bounce);
+    px(ctx, sx, sy, 3, 7, 2, 6, blade, bounce);
+    px(ctx, sx, sy, 3, 6, 1, 2, '#ffffff', bounce);
+    px(ctx, sx, sy, 3, 12, 3, 2, '#664422', bounce);
   } else if (facing === 'down') {
-    px(ctx, sx, sy, 11, 9, 2, 4, blade, bounce);
-    px(ctx, sx, sy, 12, 8, 1, 2, '#ffffaa', bounce);
+    px(ctx, sx, sy, 11, 8, 2, 5, blade, bounce);
+    px(ctx, sx, sy, 12, 7, 1, 2, '#ffffff', bounce);
+    px(ctx, sx, sy, 10, 13, 4, 1, '#664422', bounce);
   } else {
-    px(ctx, sx, sy, 2, 5, 2, 4, blade, bounce);
-    px(ctx, sx, sy, 2, 4, 1, 2, '#ffffaa', bounce);
+    px(ctx, sx, sy, 2, 4, 2, 5, blade, bounce);
+    px(ctx, sx, sy, 2, 3, 1, 2, '#ffffff', bounce);
+    px(ctx, sx, sy, 3, 9, 2, 2, '#664422', bounce);
   }
 }
 
 function heldWeaponAxe(ctx, sx, sy, facing, color, bounce) {
   const head = color ?? '#888888';
   if (facing === 'right') {
-    px(ctx, sx, sy, 11, 5, 2, 8, '#664422', bounce);
-    px(ctx, sx, sy, 13, 3, 3, 5, head, bounce);
-    px(ctx, sx, sy, 14, 4, 1, 3, '#aaaaaa', bounce);
+    px(ctx, sx, sy, 11, 4, 2, 9, '#664422', bounce);
+    px(ctx, sx, sy, 13, 2, 3, 6, head, bounce);
+    px(ctx, sx, sy, 14, 3, 1, 4, '#cccccc', bounce);
+    px(ctx, sx, sy, 12, 1, 2, 2, '#aaaaaa', bounce);
   } else if (facing === 'left') {
-    px(ctx, sx, sy, 3, 5, 2, 8, '#664422', bounce);
-    px(ctx, sx, sy, 0, 3, 3, 5, head, bounce);
-    px(ctx, sx, sy, 1, 4, 1, 3, '#aaaaaa', bounce);
+    px(ctx, sx, sy, 3, 4, 2, 9, '#664422', bounce);
+    px(ctx, sx, sy, 0, 2, 3, 6, head, bounce);
+    px(ctx, sx, sy, 1, 3, 1, 4, '#cccccc', bounce);
   } else if (facing === 'down') {
-    px(ctx, sx, sy, 10, 6, 2, 7, '#664422', bounce);
-    px(ctx, sx, sy, 12, 8, 4, 3, head, bounce);
+    px(ctx, sx, sy, 10, 5, 2, 8, '#664422', bounce);
+    px(ctx, sx, sy, 12, 7, 4, 4, head, bounce);
+    px(ctx, sx, sy, 13, 8, 2, 2, '#aaaaaa', bounce);
   } else {
-    px(ctx, sx, sy, 2, 4, 4, 3, head, bounce);
-    px(ctx, sx, sy, 4, 5, 2, 6, '#664422', bounce);
+    px(ctx, sx, sy, 1, 2, 4, 4, head, bounce);
+    px(ctx, sx, sy, 3, 4, 2, 8, '#664422', bounce);
   }
 }
 
 function heldWeaponMace(ctx, sx, sy, facing, color, bounce) {
   const head = color ?? '#666666';
   if (facing === 'right') {
-    px(ctx, sx, sy, 11, 6, 2, 7, '#553322', bounce);
-    px(ctx, sx, sy, 12, 3, 4, 4, head, bounce);
-    px(ctx, sx, sy, 13, 4, 2, 2, '#999999', bounce);
+    px(ctx, sx, sy, 11, 5, 2, 8, '#553322', bounce);
+    px(ctx, sx, sy, 12, 2, 4, 5, head, bounce);
+    px(ctx, sx, sy, 13, 3, 2, 3, '#999999', bounce);
+    px(ctx, sx, sy, 11, 1, 2, 2, '#aaaaaa', bounce);
+    px(ctx, sx, sy, 13, 1, 2, 2, '#aaaaaa', bounce);
   } else if (facing === 'left') {
-    px(ctx, sx, sy, 3, 6, 2, 7, '#553322', bounce);
-    px(ctx, sx, sy, 0, 3, 4, 4, head, bounce);
-    px(ctx, sx, sy, 1, 4, 2, 2, '#999999', bounce);
+    px(ctx, sx, sy, 3, 5, 2, 8, '#553322', bounce);
+    px(ctx, sx, sy, 0, 2, 4, 5, head, bounce);
+    px(ctx, sx, sy, 1, 3, 2, 3, '#999999', bounce);
   } else if (facing === 'down') {
-    px(ctx, sx, sy, 10, 7, 2, 6, '#553322', bounce);
-    px(ctx, sx, sy, 11, 4, 4, 4, head, bounce);
+    px(ctx, sx, sy, 10, 6, 2, 7, '#553322', bounce);
+    px(ctx, sx, sy, 11, 3, 4, 5, head, bounce);
+    px(ctx, sx, sy, 12, 4, 2, 3, '#999999', bounce);
   } else {
-    px(ctx, sx, sy, 3, 3, 4, 4, head, bounce);
-    px(ctx, sx, sy, 4, 5, 2, 6, '#553322', bounce);
+    px(ctx, sx, sy, 2, 2, 4, 5, head, bounce);
+    px(ctx, sx, sy, 4, 5, 2, 7, '#553322', bounce);
   }
 }
 
 function heldWeaponBow(ctx, sx, sy, facing, color, bounce) {
   const wood = color ?? '#885522';
   if (facing === 'left') {
-    px(ctx, sx, sy, 1, 6, 2, 6, wood, bounce);
-    px(ctx, sx, sy, 0, 5, 1, 8, '#cccccc', bounce);
-    px(ctx, sx, sy, 0, 5, 1, 1, '#ffffaa', bounce);
+    px(ctx, sx, sy, 1, 5, 2, 8, wood, bounce);
+    px(ctx, sx, sy, 0, 4, 1, 10, '#cccccc', bounce);
+    px(ctx, sx, sy, 0, 4, 1, 1, '#ffffaa', bounce);
+    px(ctx, sx, sy, 2, 8, 1, 1, '#886633', bounce);
   } else if (facing === 'right') {
-    px(ctx, sx, sy, 13, 6, 2, 6, wood, bounce);
-    px(ctx, sx, sy, 15, 5, 1, 8, '#cccccc', bounce);
-    px(ctx, sx, sy, 15, 5, 1, 1, '#ffffaa', bounce);
+    px(ctx, sx, sy, 13, 5, 2, 8, wood, bounce);
+    px(ctx, sx, sy, 15, 4, 1, 10, '#cccccc', bounce);
+    px(ctx, sx, sy, 15, 4, 1, 1, '#ffffaa', bounce);
   } else if (facing === 'up') {
-    px(ctx, sx, sy, 1, 4, 2, 5, wood, bounce);
-    px(ctx, sx, sy, 13, 4, 2, 5, wood, bounce);
-    px(ctx, sx, sy, 2, 5, 12, 1, '#cccccc', bounce);
+    px(ctx, sx, sy, 1, 3, 2, 6, wood, bounce);
+    px(ctx, sx, sy, 13, 3, 2, 6, wood, bounce);
+    px(ctx, sx, sy, 2, 4, 12, 1, '#cccccc', bounce);
+    px(ctx, sx, sy, 7, 4, 2, 1, '#ffffaa', bounce);
   } else {
-    px(ctx, sx, sy, 1, 8, 2, 5, wood, bounce);
-    px(ctx, sx, sy, 13, 8, 2, 5, wood, bounce);
-    px(ctx, sx, sy, 2, 9, 12, 1, '#cccccc', bounce);
+    px(ctx, sx, sy, 1, 7, 2, 6, wood, bounce);
+    px(ctx, sx, sy, 13, 7, 2, 6, wood, bounce);
+    px(ctx, sx, sy, 2, 8, 12, 1, '#cccccc', bounce);
   }
 }
 
@@ -294,21 +325,23 @@ function heldWeaponStaff(ctx, sx, sy, facing, color, bounce, glow = '#44ffff') {
   const shaft = '#664422';
   const orb = color ?? '#8844ff';
   if (facing === 'left') {
-    px(ctx, sx, sy, 1, 3, 2, 10, shaft, bounce);
-    px(ctx, sx, sy, 0, 2, 2, 3, orb, bounce);
-    px(ctx, sx, sy, 0, 2, 1, 1, glow, bounce);
+    px(ctx, sx, sy, 1, 2, 2, 11, shaft, bounce);
+    px(ctx, sx, sy, 0, 1, 3, 4, orb, bounce);
+    px(ctx, sx, sy, 1, 1, 1, 2, glow, bounce);
+    px(ctx, sx, sy, 0, 4, 1, 1, '#ddccff', bounce);
   } else if (facing === 'right') {
-    px(ctx, sx, sy, 13, 3, 2, 10, shaft, bounce);
-    px(ctx, sx, sy, 14, 2, 2, 3, orb, bounce);
-    px(ctx, sx, sy, 15, 2, 1, 1, glow, bounce);
+    px(ctx, sx, sy, 13, 2, 2, 11, shaft, bounce);
+    px(ctx, sx, sy, 13, 1, 3, 4, orb, bounce);
+    px(ctx, sx, sy, 14, 1, 1, 2, glow, bounce);
   } else if (facing === 'down') {
-    px(ctx, sx, sy, 12, 4, 2, 10, shaft, bounce);
-    px(ctx, sx, sy, 11, 3, 4, 3, orb, bounce);
-    px(ctx, sx, sy, 12, 3, 2, 1, glow, bounce);
+    px(ctx, sx, sy, 12, 3, 2, 10, shaft, bounce);
+    px(ctx, sx, sy, 11, 1, 4, 4, orb, bounce);
+    px(ctx, sx, sy, 12, 2, 2, 2, glow, bounce);
+    px(ctx, sx, sy, 10, 12, 4, 1, '#553311', bounce);
   } else {
-    px(ctx, sx, sy, 2, 3, 2, 10, shaft, bounce);
-    px(ctx, sx, sy, 1, 2, 3, 3, orb, bounce);
-    px(ctx, sx, sy, 2, 2, 1, 1, glow, bounce);
+    px(ctx, sx, sy, 2, 2, 2, 10, shaft, bounce);
+    px(ctx, sx, sy, 1, 0, 4, 4, orb, bounce);
+    px(ctx, sx, sy, 2, 1, 2, 2, glow, bounce);
   }
 }
 
@@ -401,66 +434,99 @@ function lootPx(ctx, sx, sy, x, y, w, h, color, bob = 0) {
   ctx.fillRect(sx + x, sy + y + bob, w, h);
 }
 
+function drawLootShadow(ctx, sx, sy, bob) {
+  lootPx(ctx, sx, sy, 3, 13, 10, 2, '#0a0a14', bob);
+  lootPx(ctx, sx, sy, 4, 14, 8, 1, '#151525', bob);
+}
+
 function drawRareGlow(ctx, sx, sy, bob) {
-  lootPx(ctx, sx, sy, 2, 3, 2, 2, '#ffcc44', bob);
-  lootPx(ctx, sx, sy, 12, 4, 2, 2, '#ffcc44', bob);
-  lootPx(ctx, sx, sy, 11, 11, 2, 2, '#ffaa22', bob);
+  lootPx(ctx, sx, sy, 1, 2, 2, 2, '#ffcc44', bob);
+  lootPx(ctx, sx, sy, 13, 3, 2, 2, '#ffee88', bob);
+  lootPx(ctx, sx, sy, 12, 12, 2, 2, '#ffaa22', bob);
+  lootPx(ctx, sx, sy, 2, 11, 1, 1, '#ffdd66', bob);
+  lootPx(ctx, sx, sy, 7, 1, 2, 1, '#ffcc44', bob);
 }
 
 function drawWeaponDagger(ctx, sx, sy, color, bob) {
+  const blade = color ?? '#aaaaaa';
   lootPx(ctx, sx, sy, 7, 11, 2, 3, '#553322', bob);
-  lootPx(ctx, sx, sy, 6, 10, 4, 2, '#664422', bob);
-  lootPx(ctx, sx, sy, 8, 4, 2, 6, color, bob);
-  lootPx(ctx, sx, sy, 7, 3, 4, 2, '#eeeeee', bob);
-  lootPx(ctx, sx, sy, 8, 2, 2, 2, '#ffffff', bob);
+  lootPx(ctx, sx, sy, 6, 10, 4, 2, '#775533', bob);
+  lootPx(ctx, sx, sy, 6, 9, 1, 1, '#886644', bob);
+  lootPx(ctx, sx, sy, 9, 9, 1, 1, '#886644', bob);
+  lootPx(ctx, sx, sy, 7, 2, 2, 7, blade, bob);
+  lootPx(ctx, sx, sy, 6, 1, 4, 2, '#dddddd', bob);
+  lootPx(ctx, sx, sy, 7, 0, 2, 2, '#ffffff', bob);
+  lootPx(ctx, sx, sy, 8, 3, 1, 4, '#cccccc', bob);
 }
 
 function drawWeaponSword(ctx, sx, sy, color, bob) {
+  const blade = color ?? '#cccccc';
   lootPx(ctx, sx, sy, 7, 12, 2, 3, '#553322', bob);
-  lootPx(ctx, sx, sy, 5, 9, 6, 2, '#888888', bob);
-  lootPx(ctx, sx, sy, 6, 10, 4, 1, '#aaaaaa', bob);
-  lootPx(ctx, sx, sy, 7, 2, 2, 8, color, bob);
-  lootPx(ctx, sx, sy, 6, 1, 4, 2, '#eeeeee', bob);
-  lootPx(ctx, sx, sy, 7, 0, 2, 2, '#ffffff', bob);
+  lootPx(ctx, sx, sy, 5, 9, 6, 2, '#777777', bob);
+  lootPx(ctx, sx, sy, 6, 10, 4, 1, '#999999', bob);
+  lootPx(ctx, sx, sy, 5, 9, 1, 1, '#886644', bob);
+  lootPx(ctx, sx, sy, 10, 9, 1, 1, '#886644', bob);
+  lootPx(ctx, sx, sy, 7, 1, 2, 9, blade, bob);
+  lootPx(ctx, sx, sy, 6, 0, 4, 2, '#eeeeee', bob);
+  lootPx(ctx, sx, sy, 7, 0, 2, 1, '#ffffff', bob);
+  lootPx(ctx, sx, sy, 8, 2, 1, 6, '#dddddd', bob);
+  lootPx(ctx, sx, sy, 6, 1, 1, 1, '#ffffff', bob);
 }
 
 function drawWeaponAxe(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 7, 5, 2, 9, '#664422', bob);
-  lootPx(ctx, sx, sy, 6, 12, 4, 2, '#553311', bob);
-  lootPx(ctx, sx, sy, 9, 2, 4, 6, color, bob);
-  lootPx(ctx, sx, sy, 10, 3, 2, 4, '#aaaaaa', bob);
-  lootPx(ctx, sx, sy, 8, 1, 2, 2, '#cccccc', bob);
+  const head = color ?? '#888888';
+  lootPx(ctx, sx, sy, 7, 6, 2, 8, '#664422', bob);
+  lootPx(ctx, sx, sy, 6, 13, 4, 2, '#443311', bob);
+  lootPx(ctx, sx, sy, 7, 5, 2, 1, '#886633', bob);
+  lootPx(ctx, sx, sy, 9, 1, 5, 7, head, bob);
+  lootPx(ctx, sx, sy, 10, 2, 2, 5, '#bbbbbb', bob);
+  lootPx(ctx, sx, sy, 8, 0, 3, 2, '#cccccc', bob);
+  lootPx(ctx, sx, sy, 11, 4, 2, 2, '#666666', bob);
+  lootPx(ctx, sx, sy, 4, 3, 2, 3, head, bob);
 }
 
 function drawWeaponMace(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 7, 8, 2, 6, '#553322', bob);
-  lootPx(ctx, sx, sy, 6, 13, 4, 2, '#443322', bob);
-  lootPx(ctx, sx, sy, 5, 2, 6, 6, color, bob);
-  lootPx(ctx, sx, sy, 6, 3, 4, 4, '#777777', bob);
-  lootPx(ctx, sx, sy, 5, 1, 2, 2, '#aaaaaa', bob);
-  lootPx(ctx, sx, sy, 9, 1, 2, 2, '#aaaaaa', bob);
-  lootPx(ctx, sx, sy, 7, 4, 2, 2, '#999999', bob);
+  const head = color ?? '#666666';
+  lootPx(ctx, sx, sy, 7, 9, 2, 5, '#553322', bob);
+  lootPx(ctx, sx, sy, 6, 13, 4, 2, '#332211', bob);
+  lootPx(ctx, sx, sy, 7, 8, 2, 1, '#775533', bob);
+  lootPx(ctx, sx, sy, 4, 1, 8, 7, head, bob);
+  lootPx(ctx, sx, sy, 5, 2, 6, 5, '#888888', bob);
+  lootPx(ctx, sx, sy, 4, 0, 2, 2, '#aaaaaa', bob);
+  lootPx(ctx, sx, sy, 10, 0, 2, 2, '#aaaaaa', bob);
+  lootPx(ctx, sx, sy, 6, 1, 4, 1, '#999999', bob);
+  lootPx(ctx, sx, sy, 7, 4, 2, 2, '#777777', bob);
+  lootPx(ctx, sx, sy, 5, 3, 1, 1, '#cccccc', bob);
+  lootPx(ctx, sx, sy, 10, 3, 1, 1, '#cccccc', bob);
 }
 
 function drawWeaponBow(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 4, 4, 2, 9, color, bob);
-  lootPx(ctx, sx, sy, 10, 4, 2, 9, color, bob);
-  lootPx(ctx, sx, sy, 5, 3, 1, 1, '#886633', bob);
-  lootPx(ctx, sx, sy, 10, 3, 1, 1, '#886633', bob);
-  lootPx(ctx, sx, sy, 5, 12, 1, 1, '#886633', bob);
-  lootPx(ctx, sx, sy, 10, 12, 1, 1, '#886633', bob);
-  lootPx(ctx, sx, sy, 6, 4, 4, 9, '#cccccc', bob);
-  lootPx(ctx, sx, sy, 7, 7, 2, 1, '#ffffaa', bob);
+  const wood = color ?? '#885522';
+  lootPx(ctx, sx, sy, 3, 3, 2, 10, wood, bob);
+  lootPx(ctx, sx, sy, 11, 3, 2, 10, wood, bob);
+  lootPx(ctx, sx, sy, 4, 2, 1, 1, '#aa7744', bob);
+  lootPx(ctx, sx, sy, 11, 2, 1, 1, '#aa7744', bob);
+  lootPx(ctx, sx, sy, 4, 12, 1, 1, '#664422', bob);
+  lootPx(ctx, sx, sy, 11, 12, 1, 1, '#664422', bob);
+  lootPx(ctx, sx, sy, 5, 3, 6, 10, '#cccccc', bob);
+  lootPx(ctx, sx, sy, 7, 6, 2, 1, '#ffffaa', bob);
+  lootPx(ctx, sx, sy, 6, 4, 1, 8, '#dddddd', bob);
+  lootPx(ctx, sx, sy, 9, 4, 1, 8, '#dddddd', bob);
 }
 
 function drawWeaponStaff(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 7, 5, 2, 10, '#664422', bob);
-  lootPx(ctx, sx, sy, 6, 14, 4, 1, '#553311', bob);
-  lootPx(ctx, sx, sy, 5, 1, 6, 4, color, bob);
-  lootPx(ctx, sx, sy, 6, 2, 4, 2, '#aa88ff', bob);
-  lootPx(ctx, sx, sy, 7, 0, 2, 2, '#ffffff', bob);
-  lootPx(ctx, sx, sy, 5, 4, 1, 1, '#ddccff', bob);
-  lootPx(ctx, sx, sy, 10, 4, 1, 1, '#ddccff', bob);
+  const orb = color ?? '#8844ff';
+  lootPx(ctx, sx, sy, 7, 6, 2, 9, '#664422', bob);
+  lootPx(ctx, sx, sy, 6, 14, 4, 1, '#443311', bob);
+  lootPx(ctx, sx, sy, 7, 5, 2, 1, '#886633', bob);
+  lootPx(ctx, sx, sy, 4, 0, 8, 5, orb, bob);
+  lootPx(ctx, sx, sy, 5, 1, 6, 3, '#aa88ff', bob);
+  lootPx(ctx, sx, sy, 6, 0, 4, 2, '#ccbbff', bob);
+  lootPx(ctx, sx, sy, 7, 1, 2, 2, '#ffffff', bob);
+  lootPx(ctx, sx, sy, 4, 4, 1, 1, '#ddccff', bob);
+  lootPx(ctx, sx, sy, 11, 4, 1, 1, '#ddccff', bob);
+  lootPx(ctx, sx, sy, 3, 2, 1, 1, '#88ffff', bob);
+  lootPx(ctx, sx, sy, 12, 2, 1, 1, '#88ffff', bob);
 }
 
 const WEAPON_DRAWERS = {
@@ -473,56 +539,79 @@ const WEAPON_DRAWERS = {
 };
 
 function drawArmorLeather(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 4, 5, 8, 7, color, bob);
+  const body = color ?? '#886633';
+  lootPx(ctx, sx, sy, 3, 4, 10, 9, '#553322', bob);
+  lootPx(ctx, sx, sy, 4, 5, 8, 7, body, bob);
   lootPx(ctx, sx, sy, 5, 4, 6, 2, '#996644', bob);
-  lootPx(ctx, sx, sy, 3, 6, 2, 5, '#775533', bob);
-  lootPx(ctx, sx, sy, 11, 6, 2, 5, '#775533', bob);
-  lootPx(ctx, sx, sy, 6, 7, 1, 4, '#553322', bob);
-  lootPx(ctx, sx, sy, 9, 7, 1, 4, '#553322', bob);
-  lootPx(ctx, sx, sy, 6, 9, 4, 1, '#aa8866', bob);
+  lootPx(ctx, sx, sy, 3, 6, 2, 5, '#664422', bob);
+  lootPx(ctx, sx, sy, 11, 6, 2, 5, '#664422', bob);
+  lootPx(ctx, sx, sy, 5, 6, 1, 4, '#553322', bob);
+  lootPx(ctx, sx, sy, 8, 6, 1, 4, '#553322', bob);
+  lootPx(ctx, sx, sy, 6, 7, 4, 1, '#aa8866', bob);
+  lootPx(ctx, sx, sy, 4, 9, 2, 1, '#775533', bob);
+  lootPx(ctx, sx, sy, 10, 9, 2, 1, '#775533', bob);
+  lootPx(ctx, sx, sy, 5, 10, 6, 2, '#775533', bob);
 }
 
 function drawArmorChain(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 4, 5, 8, 7, color, bob);
-  lootPx(ctx, sx, sy, 3, 5, 2, 6, '#666677', bob);
-  lootPx(ctx, sx, sy, 11, 5, 2, 6, '#666677', bob);
-  lootPx(ctx, sx, sy, 5, 4, 6, 2, '#9999aa', bob);
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      lootPx(ctx, sx, sy, 5 + col * 2 + (row % 2), 6 + row * 2, 1, 1, '#ccccdd', bob);
+  const base = color ?? '#888899';
+  lootPx(ctx, sx, sy, 3, 4, 10, 9, '#444455', bob);
+  lootPx(ctx, sx, sy, 4, 5, 8, 7, base, bob);
+  lootPx(ctx, sx, sy, 3, 5, 2, 6, '#555566', bob);
+  lootPx(ctx, sx, sy, 11, 5, 2, 6, '#555566', bob);
+  lootPx(ctx, sx, sy, 5, 3, 6, 2, '#bbbccc', bob);
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      lootPx(ctx, sx, sy, 4 + col * 2 + (row % 2), 5 + row * 2, 1, 1, row % 2 ? '#ddeeff' : '#99aabb', bob);
     }
   }
-  lootPx(ctx, sx, sy, 7, 8, 2, 2, '#ffffff44', bob);
+  lootPx(ctx, sx, sy, 6, 4, 4, 1, '#ccccdd', bob);
+  lootPx(ctx, sx, sy, 5, 10, 6, 2, '#666677', bob);
 }
 
 function drawArmorPlate(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 4, 6, 8, 6, color, bob);
-  lootPx(ctx, sx, sy, 3, 5, 2, 3, '#888899', bob);
-  lootPx(ctx, sx, sy, 11, 5, 2, 3, '#888899', bob);
-  lootPx(ctx, sx, sy, 5, 4, 6, 2, '#bbbccc', bob);
-  lootPx(ctx, sx, sy, 6, 5, 4, 4, '#ddddee', bob);
-  lootPx(ctx, sx, sy, 7, 6, 2, 3, '#ffffff66', bob);
-  lootPx(ctx, sx, sy, 6, 10, 4, 1, '#666677', bob);
+  const plate = color ?? '#aaaacc';
+  lootPx(ctx, sx, sy, 3, 4, 10, 9, '#555566', bob);
+  lootPx(ctx, sx, sy, 4, 6, 8, 6, plate, bob);
+  lootPx(ctx, sx, sy, 3, 5, 2, 3, '#777788', bob);
+  lootPx(ctx, sx, sy, 11, 5, 2, 3, '#777788', bob);
+  lootPx(ctx, sx, sy, 5, 3, 6, 3, '#ddddee', bob);
+  lootPx(ctx, sx, sy, 6, 4, 4, 4, '#eeeeff', bob);
+  lootPx(ctx, sx, sy, 7, 5, 2, 3, '#ffffff', bob);
+  lootPx(ctx, sx, sy, 6, 9, 4, 1, '#666677', bob);
+  lootPx(ctx, sx, sy, 4, 10, 2, 2, '#888899', bob);
+  lootPx(ctx, sx, sy, 10, 10, 2, 2, '#888899', bob);
+  lootPx(ctx, sx, sy, 5, 11, 6, 1, '#555566', bob);
 }
 
 function drawArmorRobe(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 4, 6, 8, 7, color, bob);
-  lootPx(ctx, sx, sy, 5, 3, 6, 4, '#553388', bob);
-  lootPx(ctx, sx, sy, 6, 2, 4, 2, color, bob);
+  const robe = color ?? '#6644aa';
+  lootPx(ctx, sx, sy, 3, 5, 10, 8, '#331155', bob);
+  lootPx(ctx, sx, sy, 4, 6, 8, 7, robe, bob);
+  lootPx(ctx, sx, sy, 5, 2, 6, 4, '#553388', bob);
+  lootPx(ctx, sx, sy, 6, 1, 4, 2, '#7755bb', bob);
   lootPx(ctx, sx, sy, 3, 7, 2, 6, '#442266', bob);
   lootPx(ctx, sx, sy, 11, 7, 2, 6, '#442266', bob);
-  lootPx(ctx, sx, sy, 5, 8, 6, 1, '#8866cc', bob);
-  lootPx(ctx, sx, sy, 7, 4, 2, 2, '#aa88ff', bob);
+  lootPx(ctx, sx, sy, 5, 7, 6, 1, '#8866cc', bob);
+  lootPx(ctx, sx, sy, 7, 3, 2, 2, '#ccaaFF', bob);
+  lootPx(ctx, sx, sy, 5, 11, 2, 2, '#553388', bob);
+  lootPx(ctx, sx, sy, 9, 11, 2, 2, '#553388', bob);
+  lootPx(ctx, sx, sy, 6, 12, 4, 1, '#442266', bob);
 }
 
 function drawArmorHide(ctx, sx, sy, color, bob) {
-  lootPx(ctx, sx, sy, 4, 6, 8, 6, color, bob);
-  lootPx(ctx, sx, sy, 5, 5, 6, 2, '#996644', bob);
-  lootPx(ctx, sx, sy, 3, 7, 2, 4, '#664422', bob);
-  lootPx(ctx, sx, sy, 11, 7, 2, 4, '#664422', bob);
-  lootPx(ctx, sx, sy, 5, 7, 2, 1, '#bb9977', bob);
-  lootPx(ctx, sx, sy, 9, 8, 2, 1, '#bb9977', bob);
-  lootPx(ctx, sx, sy, 7, 9, 2, 2, '#886655', bob);
+  const fur = color ?? '#775533';
+  lootPx(ctx, sx, sy, 3, 5, 10, 8, '#553311', bob);
+  lootPx(ctx, sx, sy, 4, 6, 8, 6, fur, bob);
+  lootPx(ctx, sx, sy, 5, 4, 6, 2, '#996644', bob);
+  lootPx(ctx, sx, sy, 3, 6, 2, 4, '#664422', bob);
+  lootPx(ctx, sx, sy, 11, 6, 2, 4, '#664422', bob);
+  lootPx(ctx, sx, sy, 4, 7, 2, 1, '#ccaa88', bob);
+  lootPx(ctx, sx, sy, 8, 8, 2, 1, '#ccaa88', bob);
+  lootPx(ctx, sx, sy, 6, 9, 4, 1, '#aa8866', bob);
+  lootPx(ctx, sx, sy, 5, 10, 1, 1, '#553311', bob);
+  lootPx(ctx, sx, sy, 10, 10, 1, 1, '#553311', bob);
+  lootPx(ctx, sx, sy, 7, 7, 2, 2, '#886655', bob);
 }
 
 const ARMOR_DRAWERS = {
@@ -537,7 +626,7 @@ export function drawLootWeapon(ctx, sx, sy, item, bob = 0) {
   const id = item.spriteId ?? resolveWeaponSpriteId(item.name);
   const color = item.color ?? '#cccccc';
   const draw = WEAPON_DRAWERS[id] ?? drawWeaponSword;
-  lootPx(ctx, sx, sy, 4, 13, 8, 1, '#111122', bob);
+  drawLootShadow(ctx, sx, sy, bob);
   draw(ctx, sx, sy, color, bob);
   if (item.rare || (item.name ?? '').toLowerCase().includes('редк')) {
     drawRareGlow(ctx, sx, sy, bob);
@@ -548,9 +637,109 @@ export function drawLootArmor(ctx, sx, sy, item, bob = 0) {
   const id = item.spriteId ?? resolveArmorSpriteId(item.name);
   const color = item.color ?? '#888899';
   const draw = ARMOR_DRAWERS[id] ?? drawArmorLeather;
-  lootPx(ctx, sx, sy, 4, 13, 8, 1, '#111122', bob);
+  drawLootShadow(ctx, sx, sy, bob);
   draw(ctx, sx, sy, color, bob);
   if (item.rare || (item.name ?? '').toLowerCase().includes('редк')) {
     drawRareGlow(ctx, sx, sy, bob);
   }
+}
+
+function drawChestShadow(ctx, sx, sy, bob) {
+  lootPx(ctx, sx, sy, 2, 13, 12, 2, '#0a0a14', bob);
+  lootPx(ctx, sx, sy, 3, 14, 10, 1, '#151525', bob);
+}
+
+function drawOpenedChest(ctx, sx, sy, bob) {
+  drawChestShadow(ctx, sx, sy, bob);
+
+  lootPx(ctx, sx, sy, 2, 9, 12, 5, '#2a1810', bob);
+  lootPx(ctx, sx, sy, 3, 10, 10, 3, '#120a06', bob);
+  lootPx(ctx, sx, sy, 4, 11, 8, 1, '#1a1008', bob);
+  lootPx(ctx, sx, sy, 2, 9, 1, 5, '#5c4033', bob);
+  lootPx(ctx, sx, sy, 13, 9, 1, 5, '#5c4033', bob);
+  lootPx(ctx, sx, sy, 2, 13, 12, 1, '#3d2817', bob);
+  lootPx(ctx, sx, sy, 2, 11, 12, 1, '#666677', bob);
+  lootPx(ctx, sx, sy, 3, 11, 10, 1, '#888899', bob);
+
+  lootPx(ctx, sx, sy, 1, 2, 14, 2, '#3d2817', bob);
+  lootPx(ctx, sx, sy, 2, 1, 12, 2, '#5c4033', bob);
+  lootPx(ctx, sx, sy, 3, 0, 10, 1, '#7a5533', bob);
+  lootPx(ctx, sx, sy, 4, 0, 8, 1, '#8b6844', bob);
+  lootPx(ctx, sx, sy, 1, 3, 14, 1, '#666677', bob);
+  lootPx(ctx, sx, sy, 2, 4, 12, 1, '#888899', bob);
+  lootPx(ctx, sx, sy, 4, 12, 8, 1, '#4a3020', bob);
+  lootPx(ctx, sx, sy, 5, 12, 1, 1, '#665544', bob);
+  lootPx(ctx, sx, sy, 10, 12, 1, 1, '#665544', bob);
+}
+
+function drawClosedChest(ctx, sx, sy, bob, pulse, { isMimic = false, rare = false } = {}) {
+  const woodDark = isMimic ? '#3a2518' : '#3d2817';
+  const woodMid = isMimic ? '#5a4030' : '#5c4033';
+  const woodLight = isMimic ? '#7a5544' : '#7a5533';
+  const woodHighlight = isMimic ? '#8a6655' : '#8b6844';
+
+  drawChestShadow(ctx, sx, sy, bob);
+
+  lootPx(ctx, sx, sy, 2, 9, 12, 5, woodDark, bob);
+  lootPx(ctx, sx, sy, 3, 9, 10, 4, woodMid, bob);
+  lootPx(ctx, sx, sy, 4, 10, 8, 1, woodDark, bob);
+  lootPx(ctx, sx, sy, 5, 12, 6, 1, woodLight, bob);
+  lootPx(ctx, sx, sy, 2, 9, 1, 5, '#444455', bob);
+  lootPx(ctx, sx, sy, 13, 9, 1, 5, '#444455', bob);
+  lootPx(ctx, sx, sy, 2, 11, 12, 1, '#666677', bob);
+  lootPx(ctx, sx, sy, 3, 11, 10, 1, '#888899', bob);
+  lootPx(ctx, sx, sy, 2, 13, 12, 1, woodDark, bob);
+
+  lootPx(ctx, sx, sy, 2, 4, 12, 5, woodDark, bob);
+  lootPx(ctx, sx, sy, 3, 4, 10, 4, woodMid, bob);
+  lootPx(ctx, sx, sy, 4, 3, 8, 2, woodLight, bob);
+  lootPx(ctx, sx, sy, 5, 2, 6, 1, woodHighlight, bob);
+  lootPx(ctx, sx, sy, 6, 2, 4, 1, '#a07850', bob);
+  lootPx(ctx, sx, sy, 2, 8, 12, 1, '#666677', bob);
+  lootPx(ctx, sx, sy, 3, 8, 10, 1, '#888899', bob);
+  lootPx(ctx, sx, sy, 2, 4, 1, 5, '#444455', bob);
+  lootPx(ctx, sx, sy, 13, 4, 1, 5, '#444455', bob);
+
+  const lockY = 6 + Math.round(pulse);
+  lootPx(ctx, sx, sy, 6, lockY, 4, 3, '#cc9922', bob);
+  lootPx(ctx, sx, sy, 6, lockY, 1, 1, '#ffee88', bob);
+  lootPx(ctx, sx, sy, 7, lockY + 1, 2, 2, '#554433', bob);
+  lootPx(ctx, sx, sy, 7, lockY + 1, 1, 2, '#111111', bob);
+  lootPx(ctx, sx, sy, 8, lockY, 1, 1, '#ffcc44', bob);
+  lootPx(ctx, sx, sy, 5, lockY + 2, 1, 1, '#886622', bob);
+  lootPx(ctx, sx, sy, 10, lockY + 2, 1, 1, '#886622', bob);
+
+  if (rare) {
+    drawRareGlow(ctx, sx, sy, bob);
+    if (pulse > 0) {
+      lootPx(ctx, sx, sy, 1, 5 + Math.round(pulse), 1, 1, '#ffffaa', bob);
+      lootPx(ctx, sx, sy, 14, 6, 1, 1, '#ffee88', bob);
+      lootPx(ctx, sx, sy, 7, 1, 2, 1, '#ffdd66', bob);
+    }
+  }
+
+  if (isMimic) {
+    lootPx(ctx, sx, sy, 5, lockY, 1, 1, '#ffffff', bob);
+    lootPx(ctx, sx, sy, 10, lockY, 1, 1, '#ffffff', bob);
+    lootPx(ctx, sx, sy, 5, lockY + 1, 1, 1, '#220000', bob);
+    lootPx(ctx, sx, sy, 10, lockY + 1, 1, 1, '#220000', bob);
+    lootPx(ctx, sx, sy, 7, 4, 2, 1, '#440000', bob);
+    lootPx(ctx, sx, sy, 6, 9, 4, 1, '#cc5533', bob);
+    lootPx(ctx, sx, sy, 7, 9, 2, 1, '#ff8866', bob);
+  }
+}
+
+export function drawChestSprite(ctx, sx, sy, chest, frame = 0) {
+  const bob = Math.sin(frame / 12 + (chest.x ?? 0) * 0.7) * 0.4;
+  const pulse = Math.sin(frame / 8 + (chest.x ?? 0)) * 0.5;
+
+  if (chest.opened) {
+    drawOpenedChest(ctx, sx, sy, bob);
+    return;
+  }
+
+  drawClosedChest(ctx, sx, sy, bob, pulse, {
+    isMimic: chest.isMimic,
+    rare: chest.rare !== false,
+  });
 }

@@ -1,7 +1,13 @@
 import { getHealFlaskCount, getManaFlaskCount } from './items.js';
 import { COLORS, TILE, MAP_W, MAP_H, TILES } from './config.js';
 import { key } from './utils.js';
-import { drawHeroSprite, drawHeroDeath, drawLootWeapon, drawLootArmor } from './sprites.js';
+import {
+  drawHeroSprite,
+  drawHeroDeath,
+  drawLootWeapon,
+  drawLootArmor,
+  drawChestSprite,
+} from './sprites.js';
 import { drawMonsterSprite } from './monsterSprites.js';
 import { TRAP_TYPES } from './traps.js';
 import {
@@ -316,27 +322,7 @@ export class Renderer {
     if (chest.isMimic && chest.opened) return;
 
     const { sx, sy } = this.worldToScreen(chest.x, chest.y, camX, camY);
-    const ctx = this.ctx;
-    const pulse = Math.sin(frame / 8 + chest.x) * 0.5;
-
-    if (chest.opened) {
-      ctx.fillStyle = '#553311';
-      ctx.fillRect(sx + 3, sy + 10, 10, 5);
-      ctx.fillRect(sx + 2, sy + 8, 12, 3);
-      ctx.fillStyle = '#443322';
-      ctx.fillRect(sx + 3, sy + 5, 10, 4);
-      return;
-    }
-
-    ctx.fillStyle = '#553311';
-    ctx.fillRect(sx + 3, sy + 10, 10, 5);
-    ctx.fillStyle = '#775533';
-    ctx.fillRect(sx + 2, sy + 8, 12, 4);
-    ctx.fillStyle = '#ffcc44';
-    ctx.fillRect(sx + 4, sy + 6 + pulse, 8, 2);
-    ctx.fillRect(sx + 7, sy + 9, 2, 3);
-    ctx.fillStyle = '#ffee88';
-    ctx.fillRect(sx + 5, sy + 7 + pulse, 4, 2);
+    drawChestSprite(this.ctx, sx, sy, chest, frame);
   }
 
   drawHealer(healer, camX, camY, frame) {
