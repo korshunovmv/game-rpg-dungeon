@@ -7,6 +7,7 @@ import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
 import { getTrapAt, triggerTrap, tickPoison, disarmTrap, revealTrapsForThief } from './traps.js';
 import { useHealer, purchaseFromMerchant, useHealFlask, useManaFlask, getHealFlaskCount, getManaFlaskCount } from './items.js';
+import { formatRarityLabel } from './rarity.js';
 import { usesMana } from './classes.js';
 import { pickBestPurchase, merchantHasStock, hasWorthwhilePurchase } from './merchant.js';
 import { getAliveBoss } from './bosses.js';
@@ -295,19 +296,21 @@ export class Game {
       this.log(`${result.name} → флаконы маны: ${result.count}`, 'loot');
       this.renderer.addParticle(x, y, '#4488ff', 25);
     } else if (result.type === 'weapon') {
+      const label = formatRarityLabel(result.rarity);
       if (result.equipped) {
-        this.log(`Экипировано: ${result.name} (+${result.atk} ATK)`, 'loot');
+        this.log(`Экипировано: ${label}${result.name} (+${result.atk} ATK)`, 'loot');
       } else if (result.unusable) {
-        this.log(`${result.name} не подходит классу, продано`, 'loot');
+        this.log(`${label}${result.name} не подходит классу, продано`, 'loot');
       } else {
-        this.log(`${result.name} продан (слабее текущего)`, 'loot');
+        this.log(`${label}${result.name} продан (слабее текущего)`, 'loot');
       }
       this.renderer.addParticle(x, y, '#cccccc', 20);
     } else if (result.type === 'armor') {
+      const label = formatRarityLabel(result.rarity);
       if (result.equipped) {
-        this.log(`Экипировано: ${result.name} (+${result.def} DEF)`, 'loot');
+        this.log(`Экипировано: ${label}${result.name} (+${result.def} DEF)`, 'loot');
       } else {
-        this.log(`${result.name} продан`, 'loot');
+        this.log(`${label}${result.name} продан`, 'loot');
       }
       this.renderer.addParticle(x, y, '#888899', 20);
     }
@@ -365,10 +368,16 @@ export class Game {
       this.log(`${seller}: ${result.name} за ${result.price} зол. (мана: ${result.count})`, 'shop');
       this.renderer.addParticle(this.hero.x, this.hero.y, '#4488ff', 25);
     } else if (result.type === 'weapon') {
-      this.log(`${seller}: ${result.name} (+${result.atk} ATK) за ${result.price} зол.`, 'shop');
+      this.log(
+        `${seller}: ${formatRarityLabel(result.rarity)}${result.name} (+${result.atk} ATK) за ${result.price} зол.`,
+        'shop'
+      );
       this.renderer.addParticle(this.hero.x, this.hero.y, '#cccccc', 20);
     } else if (result.type === 'armor') {
-      this.log(`${seller}: ${result.name} (+${result.def} DEF) за ${result.price} зол.`, 'shop');
+      this.log(
+        `${seller}: ${formatRarityLabel(result.rarity)}${result.name} (+${result.def} DEF) за ${result.price} зол.`,
+        'shop'
+      );
       this.renderer.addParticle(this.hero.x, this.hero.y, '#888899', 20);
     }
     this.syncStats();

@@ -2,6 +2,7 @@ import { randInt, shuffle, manhattan } from './utils.js';
 import { isWalkable } from './dungeon.js';
 import { WEAPONS, ARMORS, POTIONS, collectItem } from './items.js';
 import { canHeroEquipWeapon } from './classes.js';
+import { buildWeapon, buildArmor, rarityPriorityBonus } from './rarity.js';
 
 const MIMIC_CHANCE = 0.28;
 
@@ -28,35 +29,18 @@ function createRareChestLoot(floor, luck = 5) {
   }
 
   if (roll < 0.73) {
-    const minIdx = Math.min(Math.floor(floor / 2) + 1, WEAPONS.length - 1);
-    const weapon = { ...WEAPONS[randInt(minIdx, WEAPONS.length - 1)] };
-    weapon.atk += 1 + Math.floor(floor / 4);
-    weapon.name = `Редкий ${weapon.name.toLowerCase()}`;
-    return {
-      type: 'weapon',
-      spriteId: weapon.id,
-      name: weapon.name,
-      atk: weapon.atk,
-      color: weapon.color ?? '#ffd700',
-      rare: true,
-    };
+    const base = WEAPONS[randInt(
+      Math.min(Math.floor(floor / 2) + 1, WEAPONS.length - 1),
+      WEAPONS.length - 1
+    )];
+    return { type: 'weapon', ...buildWeapon(base, floor, luck, { minRarity: 'rare' }) };
   }
 
-  const minIdx = Math.min(Math.floor(floor / 2) + 1, ARMORS.length - 1);
-  const armor = { ...ARMORS[randInt(minIdx, ARMORS.length - 1)] };
-  armor.def += 1 + Math.floor(floor / 6);
-  armor.hp = (armor.hp ?? 0) + 3 + Math.floor(floor / 3);
-  armor.name = `Редкая ${armor.name.toLowerCase()}`;
-  return {
-    type: 'armor',
-    spriteId: armor.id,
-    name: armor.name,
-    def: armor.def,
-    hp: armor.hp ?? 0,
-    atk: armor.atk ?? 0,
-    color: armor.color ?? '#aaaacc',
-    rare: true,
-  };
+  const base = ARMORS[randInt(
+    Math.min(Math.floor(floor / 2) + 1, ARMORS.length - 1),
+    ARMORS.length - 1
+  )];
+  return { type: 'armor', ...buildArmor(base, floor, luck, { minRarity: 'rare' }) };
 }
 
 export function createMimic(floor, pos) {
@@ -85,7 +69,10 @@ export function describeChestLoot(loot) {
   if (loot.type.startsWith('potion')) return loot.name;
   if (loot.type.startsWith('mana_potion')) return loot.name;
   if (loot.type === 'weapon') return `${loot.name} (+${loot.atk} ATK)`;
-  if (loot.type === 'armor') return `${loot.name} (+${loot.def} DEF)`;
+  if (loot.type === 'armor') {
+    const hpNote = loot.hp ? `, +${loot.hp} HP` : '';
+    return `${loot.name} (+${loot.def} DEF${hpNote})`;
+  }
   return loot.name ?? 'сокровище';
 }
 
@@ -158,12 +145,12 @@ export function chestPriority(chest, hero) {
   if (loot.type === 'weapon') {
     if (!canHeroEquipWeapon(hero, loot)) return 700;
     const gain = loot.atk - (hero.weapon?.atk ?? 0);
-    return 920 + (gain > 0 ? gain * 12 : 0);
+    return 920 + (gain > 0 ? gain * 12 : 0) + rarityPriorityBonus(loot);
   }
   if (loot.type === 'armor') {
     const cur = (hero.armor?.def ?? 0) * 2 + (hero.armor?.hp ?? 0);
     const next = loot.def * 2 + (loot.hp ?? 0);
-    return 910 + (next > cur ? (next - cur) * 10 : 0);
+    return 910 + (next > cur ? (next - cur) * 10 : 0) + rarityPriorityBonus(loot);
   }
   if (loot.type.startsWith('potion')) {
     const missing = hero.maxHp - hero.hp;

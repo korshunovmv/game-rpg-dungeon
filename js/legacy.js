@@ -37,6 +37,8 @@ function pickLegacyGift(hero) {
       name: hero.weapon.name,
       atk: hero.weapon.atk ?? 1,
       color: hero.weapon.color ?? '#cccccc',
+      spriteId: hero.weapon.spriteId,
+      rarity: hero.weapon.rarity,
     });
   }
 
@@ -48,6 +50,8 @@ function pickLegacyGift(hero) {
       hp: hero.armor.hp ?? 0,
       atk: hero.armor.atk ?? 0,
       color: hero.armor.color ?? '#888899',
+      spriteId: hero.armor.spriteId,
+      rarity: hero.armor.rarity,
     });
   }
 
@@ -205,6 +209,7 @@ function equipLegacyWeapon(hero, gift) {
     atk: gift.atk,
     color: gift.color,
     spriteId: gift.spriteId ?? resolveWeaponSpriteId(gift.name),
+    rarity: gift.rarity ?? 'common',
   };
 }
 
@@ -216,6 +221,7 @@ function equipLegacyArmor(hero, gift) {
     atk: gift.atk ?? 0,
     color: gift.color,
     spriteId: gift.spriteId ?? resolveArmorSpriteId(gift.name),
+    rarity: gift.rarity ?? 'common',
   };
   recalcMaxHp(hero);
 }

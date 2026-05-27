@@ -2,24 +2,31 @@ import { randInt, shuffle } from './utils.js';
 import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS } from './items.js';
 import { luckMerchantChance } from './luck.js';
 import { canHeroEquipWeapon } from './classes.js';
+import { buildWeapon, buildArmor, getRarityDef, getItemRarity } from './rarity.js';
 
 const MERCHANT_NAMES = ['Странник', 'Купец', 'Бродячий торговец'];
 const SPAWN_CHANCE = 0.32;
 
-function scaleWeapon(floor) {
+function pickWeaponBase(floor) {
   const pool = [...WEAPONS];
   const minIdx = Math.min(Math.floor(floor / 2), pool.length - 1);
-  const w = { ...pool[randInt(minIdx, pool.length - 1)] };
-  if (floor > 3) w.atk += Math.floor(floor / 4);
-  return w;
+  return pool[randInt(minIdx, pool.length - 1)];
 }
 
-function scaleArmor(floor) {
+function pickArmorBase(floor) {
   const pool = [...ARMORS];
   const minIdx = Math.min(Math.floor(floor / 2), pool.length - 1);
-  const a = { ...pool[randInt(minIdx, pool.length - 1)] };
-  if (floor > 4) a.def += 1;
-  return a;
+  return pool[randInt(minIdx, pool.length - 1)];
+}
+
+function weaponPrice(weapon, floor) {
+  const rarityMult = getRarityDef(getItemRarity(weapon)).sellMult;
+  return Math.floor((12 + weapon.atk * 8 + floor * 4) * rarityMult);
+}
+
+function armorPrice(armor, floor) {
+  const rarityMult = getRarityDef(getItemRarity(armor)).sellMult;
+  return Math.floor((15 + armor.def * 10 + (armor.hp ?? 0) * 2 + floor * 4) * rarityMult);
 }
 
 function weaponScore(w) {
@@ -58,52 +65,62 @@ export function generateMerchantStock(floor) {
     sold: false,
   });
 
-  const weapon = scaleWeapon(floor);
+  const weapon = buildWeapon(pickWeaponBase(floor), floor, 5, { minRarity: 'uncommon' });
   stock.push({
     id: `s-w-${Date.now()}`,
     type: 'weapon',
+    spriteId: weapon.spriteId,
     name: weapon.name,
     atk: weapon.atk,
     color: weapon.color,
-    price: 12 + weapon.atk * 8 + floor * 4,
+    rarity: weapon.rarity,
+    price: weaponPrice(weapon, floor),
     sold: false,
   });
 
-  const armor = scaleArmor(floor);
+  const armor = buildArmor(pickArmorBase(floor), floor, 5, { minRarity: 'uncommon' });
   stock.push({
     id: `s-a-${Date.now()}`,
     type: 'armor',
+    spriteId: armor.spriteId,
     name: armor.name,
     def: armor.def,
     hp: armor.hp ?? 0,
     atk: armor.atk ?? 0,
     color: armor.color,
-    price: 15 + armor.def * 10 + (armor.hp ?? 0) * 2 + floor * 4,
+    rarity: armor.rarity,
+    price: armorPrice(armor, floor),
     sold: false,
   });
 
   if (Math.random() < 0.5) {
-    const extra = Math.random() < 0.5 ? scaleWeapon(floor + 1) : scaleArmor(floor + 1);
-    if (extra.atk !== undefined) {
+    const extraWeapon = Math.random() < 0.5;
+    if (extraWeapon) {
+      const extra = buildWeapon(pickWeaponBase(floor + 1), floor + 1, 6);
       stock.push({
         id: `s-w2-${Date.now()}`,
         type: 'weapon',
+        spriteId: extra.spriteId,
         name: extra.name,
         atk: extra.atk,
         color: extra.color,
-        price: 18 + extra.atk * 9 + floor * 5,
+        rarity: extra.rarity,
+        price: weaponPrice(extra, floor + 1),
         sold: false,
       });
     } else {
+      const extra = buildArmor(pickArmorBase(floor + 1), floor + 1, 6);
       stock.push({
         id: `s-a2-${Date.now()}`,
         type: 'armor',
+        spriteId: extra.spriteId,
         name: extra.name,
         def: extra.def,
         hp: extra.hp ?? 0,
         atk: extra.atk ?? 0,
         color: extra.color,
-        price: 20 + extra.def * 11 + floor * 5,
+        rarity: extra.rarity,
+        price: armorPrice(extra, floor + 1),
         sold: false,
       });
     }

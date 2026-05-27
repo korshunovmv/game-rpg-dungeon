@@ -7,6 +7,7 @@ import { getTotalAtk, getTotalDef } from './items.js';
 import { getLuck } from './luck.js';
 import { usesMana } from './classes.js';
 import { describeLegacyGift } from './legacy.js';
+import { getItemRarity, getRarityDef } from './rarity.js';
 
 class UI {
   constructor() {
@@ -58,6 +59,20 @@ class UI {
     }
   }
 
+  setEquipLabel(el, equip) {
+    if (!el) return;
+    if (!equip) {
+      el.textContent = '—';
+      el.style.color = '';
+      el.removeAttribute('title');
+      return;
+    }
+    const def = getRarityDef(getItemRarity(equip));
+    el.textContent = equip.name;
+    el.style.color = def.color;
+    el.title = def.name;
+  }
+
   updateStats(hero, minionCount = 0, maxMinions = 0) {
     this.heroName.textContent = hero.name;
     this.heroHp.textContent = `${Math.max(0, hero.hp)}/${hero.maxHp}`;
@@ -70,8 +85,8 @@ class UI {
     this.heroAtk.textContent = String(getTotalAtk(hero));
     this.heroDef.textContent = String(getTotalDef(hero));
     this.heroLuck.textContent = String(getLuck(hero));
-    this.heroWeapon.textContent = hero.weapon?.name ?? '—';
-    this.heroArmor.textContent = hero.armor?.name ?? '—';
+    this.setEquipLabel(this.heroWeapon, hero.weapon);
+    this.setEquipLabel(this.heroArmor, hero.armor);
     if (hero.profession === 'necromancer') {
       this.minionsRow.style.display = 'flex';
       this.heroMinions.textContent =

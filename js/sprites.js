@@ -1,3 +1,5 @@
+import { getItemRarity, hasRarityGlow } from './rarity.js';
+
 const SKIN = '#ffccaa';
 const OUTLINE = '#ffffff';
 const EYE = '#223366';
@@ -440,11 +442,31 @@ function drawLootShadow(ctx, sx, sy, bob) {
 }
 
 function drawRareGlow(ctx, sx, sy, bob) {
-  lootPx(ctx, sx, sy, 1, 2, 2, 2, '#ffcc44', bob);
-  lootPx(ctx, sx, sy, 13, 3, 2, 2, '#ffee88', bob);
-  lootPx(ctx, sx, sy, 12, 12, 2, 2, '#ffaa22', bob);
-  lootPx(ctx, sx, sy, 2, 11, 1, 1, '#ffdd66', bob);
-  lootPx(ctx, sx, sy, 7, 1, 2, 1, '#ffcc44', bob);
+  drawRarityGlow(ctx, sx, sy, bob, 'rare');
+}
+
+function drawRarityGlow(ctx, sx, sy, bob, rarity = 'common') {
+  const colors = {
+    uncommon: ['#33aa55', '#55dd77'],
+    rare: ['#ffcc44', '#ffee88', '#ffaa22', '#ffdd66'],
+    epic: ['#9933ff', '#cc66ff', '#7722cc', '#bb55ff'],
+    legendary: ['#ff8800', '#ffcc44', '#ffaa00', '#ffee88', '#ff6600'],
+  };
+
+  const palette = colors[rarity] ?? colors.rare;
+  const points = [
+    [1, 2, 2, 2],
+    [13, 3, 2, 2],
+    [12, 12, 2, 2],
+    [2, 11, 1, 1],
+    [7, 1, 2, 1],
+    [0, 7, 1, 1],
+    [14, 8, 1, 1],
+  ];
+
+  points.forEach(([x, y, w, h], i) => {
+    lootPx(ctx, sx, sy, x, y, w, h, palette[i % palette.length], bob);
+  });
 }
 
 function drawWeaponDagger(ctx, sx, sy, color, bob) {
@@ -628,8 +650,9 @@ export function drawLootWeapon(ctx, sx, sy, item, bob = 0) {
   const draw = WEAPON_DRAWERS[id] ?? drawWeaponSword;
   drawLootShadow(ctx, sx, sy, bob);
   draw(ctx, sx, sy, color, bob);
-  if (item.rare || (item.name ?? '').toLowerCase().includes('редк')) {
-    drawRareGlow(ctx, sx, sy, bob);
+  const rarity = getItemRarity(item);
+  if (hasRarityGlow(rarity)) {
+    drawRarityGlow(ctx, sx, sy, bob, rarity);
   }
 }
 
@@ -639,8 +662,9 @@ export function drawLootArmor(ctx, sx, sy, item, bob = 0) {
   const draw = ARMOR_DRAWERS[id] ?? drawArmorLeather;
   drawLootShadow(ctx, sx, sy, bob);
   draw(ctx, sx, sy, color, bob);
-  if (item.rare || (item.name ?? '').toLowerCase().includes('редк')) {
-    drawRareGlow(ctx, sx, sy, bob);
+  const rarity = getItemRarity(item);
+  if (hasRarityGlow(rarity)) {
+    drawRarityGlow(ctx, sx, sy, bob, rarity);
   }
 }
 

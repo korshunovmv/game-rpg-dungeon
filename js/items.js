@@ -3,6 +3,13 @@ import { getProfession, canHeroEquipWeapon } from './classes.js';
 import { applyLuckLootWeights, luckGoldBonus } from './luck.js';
 import { collectLegacyGrave } from './legacy.js';
 import { resolveWeaponSpriteId, resolveArmorSpriteId } from './sprites.js';
+import {
+  buildWeapon,
+  buildArmor,
+  getItemRarity,
+  getEquipSellValue,
+  rarityPriorityBonus,
+} from './rarity.js';
 
 export const POTIONS = {
   potion_small: { id: 'potion_small', name: 'Малое зелье', heal: 15, color: '#66cc66' },
@@ -59,22 +66,16 @@ function pickLootType(luck = 5) {
   return 'gold';
 }
 
-function scaleWeapon(floor) {
+function pickWeaponBase(floor) {
   const pool = [...WEAPONS];
   const minIdx = Math.min(Math.floor(floor / 2), pool.length - 1);
-  const idx = randInt(minIdx, pool.length - 1);
-  const w = { ...pool[idx] };
-  if (floor > 3) w.atk += Math.floor(floor / 4);
-  return w;
+  return pool[randInt(minIdx, pool.length - 1)];
 }
 
-function scaleArmor(floor) {
+function pickArmorBase(floor) {
   const pool = [...ARMORS];
   const minIdx = Math.min(Math.floor(floor / 2), pool.length - 1);
-  const idx = randInt(minIdx, pool.length - 1);
-  const a = { ...pool[idx] };
-  if (floor > 4) a.def += 1;
-  return a;
+  return pool[randInt(minIdx, pool.length - 1)];
 }
 
 export function createLootItem(pos, floor, index, luck = 5) {
@@ -120,32 +121,34 @@ export function createLootItem(pos, floor, index, luck = 5) {
   }
 
   if (kind === 'weapon') {
-    const weapon = scaleWeapon(floor);
+    const weapon = buildWeapon(pickWeaponBase(floor), floor, luck);
     return {
       id: `i-${index}-${Date.now()}`,
       x: pos.x,
       y: pos.y,
       type: 'weapon',
-      spriteId: weapon.id,
+      spriteId: weapon.spriteId,
       name: weapon.name,
       atk: weapon.atk,
       color: weapon.color,
+      rarity: weapon.rarity,
       collected: false,
     };
   }
 
-  const armor = scaleArmor(floor);
+  const armor = buildArmor(pickArmorBase(floor), floor, luck);
   return {
     id: `i-${index}-${Date.now()}`,
     x: pos.x,
     y: pos.y,
     type: 'armor',
-    spriteId: armor.id,
+    spriteId: armor.spriteId,
     name: armor.name,
     def: armor.def,
     hp: armor.hp ?? 0,
     atk: armor.atk ?? 0,
     color: armor.color,
+    rarity: armor.rarity,
     collected: false,
   };
 }
@@ -208,6 +211,7 @@ function equipWeapon(hero, weapon) {
     atk: weapon.atk,
     color: weapon.color,
     spriteId: weapon.spriteId ?? resolveWeaponSpriteId(weapon.name),
+    rarity: getItemRarity(weapon),
   };
   return true;
 }
@@ -220,6 +224,7 @@ function equipArmor(hero, armor) {
     atk: armor.atk ?? 0,
     color: armor.color,
     spriteId: armor.spriteId ?? resolveArmorSpriteId(armor.name),
+    rarity: getItemRarity(armor),
   };
   recalcMaxHp(hero);
 }
@@ -316,6 +321,7 @@ export function purchaseFromMerchant(hero, item) {
         type: 'weapon',
         name: item.name,
         atk: item.atk,
+        rarity: getItemRarity(item),
         price: item.price,
         equipped: true,
       };
@@ -324,14 +330,17 @@ export function purchaseFromMerchant(hero, item) {
   }
 
   if (item.type === 'armor') {
-    equipArmor(hero, item);
-    return {
-      type: 'armor',
-      name: item.name,
-      def: item.def,
-      price: item.price,
-      equipped: true,
-    };
+    if (equipArmor(hero, item)) {
+      return {
+        type: 'armor',
+        name: item.name,
+        def: item.def,
+        rarity: getItemRarity(item),
+        price: item.price,
+        equipped: true,
+      };
+    }
+    return null;
   }
 
   return null;
@@ -374,11 +383,12 @@ export function collectItem(hero, item) {
 
   if (item.type === 'weapon') {
     if (!canHeroEquipWeapon(hero, item)) {
-      hero.gold += 2 + item.atk;
+      hero.gold += getEquipSellValue(item);
       return {
         type: 'weapon',
         name: item.name,
         atk: item.atk,
+        rarity: getItemRarity(item),
         equipped: false,
         unusable: true,
       };
@@ -389,13 +399,26 @@ export function collectItem(hero, item) {
       atk: item.atk,
       color: item.color,
       spriteId: item.spriteId,
+      rarity: getItemRarity(item),
     };
     if (weaponScore(newW) > weaponScore(hero.weapon)) {
       equipWeapon(hero, newW);
-      return { type: 'weapon', name: item.name, atk: item.atk, equipped: true };
+      return {
+        type: 'weapon',
+        name: item.name,
+        atk: item.atk,
+        rarity: getItemRarity(item),
+        equipped: true,
+      };
     }
-    hero.gold += 2 + item.atk;
-    return { type: 'weapon', name: item.name, atk: item.atk, equipped: false };
+    hero.gold += getEquipSellValue(item);
+    return {
+      type: 'weapon',
+      name: item.name,
+      atk: item.atk,
+      rarity: getItemRarity(item),
+      equipped: false,
+    };
   }
 
   if (item.type === 'armor') {
@@ -406,6 +429,7 @@ export function collectItem(hero, item) {
       atk: item.atk ?? 0,
       color: item.color,
       spriteId: item.spriteId,
+      rarity: getItemRarity(item),
     };
     if (armorScore(newA) > armorScore(hero.armor)) {
       equipArmor(hero, newA);
@@ -413,11 +437,18 @@ export function collectItem(hero, item) {
         type: 'armor',
         name: item.name,
         def: item.def,
+        rarity: getItemRarity(item),
         equipped: true,
       };
     }
-    hero.gold += 3 + item.def;
-    return { type: 'armor', name: item.name, def: item.def, equipped: false };
+    hero.gold += getEquipSellValue(item);
+    return {
+      type: 'armor',
+      name: item.name,
+      def: item.def,
+      rarity: getItemRarity(item),
+      equipped: false,
+    };
   }
 
   return null;
@@ -457,12 +488,14 @@ export function itemPriority(item, hero) {
   if (item.type === 'weapon') {
     if (!canHeroEquipWeapon(hero, item)) return 0;
     const gain = item.atk - (hero.weapon?.atk ?? 0);
-    return gain > 0 ? gain * 10 : 1;
+    const bonus = rarityPriorityBonus(item);
+    return gain > 0 ? gain * 10 + bonus : 1 + bonus * 0.1;
   }
   if (item.type === 'armor') {
     const cur = armorScore(hero.armor);
     const next = armorScore(item);
-    return next > cur ? (next - cur) * 8 : 1;
+    const bonus = rarityPriorityBonus(item);
+    return next > cur ? (next - cur) * 8 + bonus : 1 + bonus * 0.1;
   }
   return 5;
 }
