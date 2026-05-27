@@ -2,6 +2,7 @@ import { randInt, shuffle } from './utils.js';
 import { getProfession } from './classes.js';
 import { applyLuckLootWeights, luckGoldBonus } from './luck.js';
 import { collectLegacyGrave } from './legacy.js';
+import { resolveWeaponSpriteId, resolveArmorSpriteId } from './sprites.js';
 
 export const POTIONS = {
   potion_small: { id: 'potion_small', name: 'Малое зелье', heal: 15, color: '#66cc66' },
@@ -200,7 +201,12 @@ export function recalcMaxHp(hero) {
 }
 
 function equipWeapon(hero, weapon) {
-  hero.weapon = { name: weapon.name, atk: weapon.atk, color: weapon.color };
+  hero.weapon = {
+    name: weapon.name,
+    atk: weapon.atk,
+    color: weapon.color,
+    spriteId: weapon.spriteId ?? resolveWeaponSpriteId(weapon.name),
+  };
 }
 
 function equipArmor(hero, armor) {
@@ -210,6 +216,7 @@ function equipArmor(hero, armor) {
     hp: armor.hp ?? 0,
     atk: armor.atk ?? 0,
     color: armor.color,
+    spriteId: armor.spriteId ?? resolveArmorSpriteId(armor.name),
   };
   recalcMaxHp(hero);
 }
@@ -359,7 +366,12 @@ export function collectItem(hero, item) {
   }
 
   if (item.type === 'weapon') {
-    const newW = { name: item.name, atk: item.atk, color: item.color };
+    const newW = {
+      name: item.name,
+      atk: item.atk,
+      color: item.color,
+      spriteId: item.spriteId,
+    };
     if (weaponScore(newW) > weaponScore(hero.weapon)) {
       equipWeapon(hero, newW);
       return { type: 'weapon', name: item.name, atk: item.atk, equipped: true };
@@ -375,6 +387,7 @@ export function collectItem(hero, item) {
       hp: item.hp ?? 0,
       atk: item.atk ?? 0,
       color: item.color,
+      spriteId: item.spriteId,
     };
     if (armorScore(newA) > armorScore(hero.armor)) {
       equipArmor(hero, newA);

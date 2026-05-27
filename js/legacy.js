@@ -3,6 +3,7 @@ import { MAP_W, MAP_H } from './config.js';
 import { manhattan } from './utils.js';
 import { getSkillDef, initHeroSkills, applySkillBonuses } from './skills.js';
 import { recalcMaxHp } from './items.js';
+import { resolveWeaponSpriteId, resolveArmorSpriteId } from './sprites.js';
 
 const STORAGE_KEY = 'dungeon_legacies';
 const MAX_LEGACIES = 8;
@@ -198,7 +199,12 @@ export function placeGraveOnFloor(items, monsters, map, legacy) {
 }
 
 function equipLegacyWeapon(hero, gift) {
-  hero.weapon = { name: gift.name, atk: gift.atk, color: gift.color };
+  hero.weapon = {
+    name: gift.name,
+    atk: gift.atk,
+    color: gift.color,
+    spriteId: gift.spriteId ?? resolveWeaponSpriteId(gift.name),
+  };
 }
 
 function equipLegacyArmor(hero, gift) {
@@ -208,6 +214,7 @@ function equipLegacyArmor(hero, gift) {
     hp: gift.hp ?? 0,
     atk: gift.atk ?? 0,
     color: gift.color,
+    spriteId: gift.spriteId ?? resolveArmorSpriteId(gift.name),
   };
   recalcMaxHp(hero);
 }

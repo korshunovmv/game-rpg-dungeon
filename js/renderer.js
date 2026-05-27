@@ -567,7 +567,7 @@ export class Renderer {
     const { sx, sy } = this.worldToScreen(hero.x, hero.y, camX, camY);
     const bounce = Math.sin(frame / 4) * (hero.alive ? 1 : 0);
 
-    drawHeroSprite(this.ctx, sx, sy, hero.profession, hero.facing, bounce);
+    drawHeroSprite(this.ctx, sx, sy, hero, hero.facing, bounce);
 
     if (!hero.alive) {
       drawHeroDeath(this.ctx, sx, sy);
