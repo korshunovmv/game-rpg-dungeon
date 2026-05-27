@@ -7,9 +7,17 @@ import { necromancerCombatRound } from './necromancy.js';
 import { rollLuck, luckCritBonus } from './luck.js';
 import { generateHeroName } from './names.js';
 import { initHeroSkills } from './skills.js';
+import { getHeroMaxMana } from './attributes.js';
 
 export function createHero(spawn, professionId = 'warrior') {
   const prof = getProfession(professionId);
+  const baseAttributes = {
+    strength: prof.attributes?.strength ?? 5,
+    dexterity: prof.attributes?.dexterity ?? 5,
+    intelligence: prof.attributes?.intelligence ?? 5,
+    perception: prof.attributes?.perception ?? 5,
+    endurance: prof.attributes?.endurance ?? 5,
+  };
   const hero = {
     name: generateHeroName(),
     profession: professionId,
@@ -22,6 +30,7 @@ export function createHero(spawn, professionId = 'warrior') {
     baseMaxHp: prof.hp,
     atk: prof.atk,
     def: prof.def,
+    ...baseAttributes,
     weapon: null,
     armor: null,
     level: 1,
@@ -41,7 +50,7 @@ export function createHero(spawn, professionId = 'warrior') {
   };
   initHeroSkills(hero);
   if (professionId === 'mage' || professionId === 'necromancer') {
-    hero.maxMana = 20 + hero.level * 2;
+    hero.maxMana = getHeroMaxMana(hero);
     hero.mana = hero.maxMana;
   }
   return hero;
@@ -56,9 +65,9 @@ export function levelUp(hero) {
   hero.atk += growth.atk;
   hero.def += growth.def;
   if (hero.maxMana) {
-    const gained = 2;
-    hero.maxMana += gained;
-    hero.mana = Math.min(hero.maxMana, hero.mana + gained);
+    const prevMaxMana = hero.maxMana;
+    hero.maxMana = getHeroMaxMana(hero);
+    hero.mana = Math.min(hero.maxMana, hero.mana + (hero.maxMana - prevMaxMana));
   }
   hero.xpToLevel = Math.floor(hero.xpToLevel * 1.5);
   return hero;

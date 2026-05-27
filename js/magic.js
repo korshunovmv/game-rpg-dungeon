@@ -1,9 +1,10 @@
 import { randInt, manhattan } from './utils.js';
 import { calcMonsterDamage, canMonsterHitHero } from './monsters.js';
 import { ensureHeroMana } from './items.js';
+import { getIntelligenceSpellBonus } from './attributes.js';
 
 function getTotalAtk(hero) {
-  return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0);
+  return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0) + getIntelligenceSpellBonus(hero);
 }
 
 function getTotalDef(hero) {

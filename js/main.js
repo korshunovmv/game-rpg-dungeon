@@ -25,6 +25,11 @@ class UI {
     this.heroAtk = document.getElementById('hero-atk');
     this.heroDef = document.getElementById('hero-def');
     this.heroLuck = document.getElementById('hero-luck');
+    this.heroStrength = document.getElementById('hero-strength');
+    this.heroDexterity = document.getElementById('hero-dexterity');
+    this.heroIntelligence = document.getElementById('hero-intelligence');
+    this.heroPerception = document.getElementById('hero-perception');
+    this.heroEndurance = document.getElementById('hero-endurance');
     this.heroWeapon = document.getElementById('hero-weapon');
     this.heroArmor = document.getElementById('hero-armor');
     this.heroMinions = document.getElementById('hero-minions');
@@ -85,6 +90,11 @@ class UI {
     this.heroAtk.textContent = String(getTotalAtk(hero));
     this.heroDef.textContent = String(getTotalDef(hero));
     this.heroLuck.textContent = String(getLuck(hero));
+    this.heroStrength.textContent = String(hero.strength ?? 0);
+    this.heroDexterity.textContent = String(hero.dexterity ?? 0);
+    this.heroIntelligence.textContent = String(hero.intelligence ?? 0);
+    this.heroPerception.textContent = String(hero.perception ?? 0);
+    this.heroEndurance.textContent = String(hero.endurance ?? 0);
     this.setEquipLabel(this.heroWeapon, hero.weapon);
     this.setEquipLabel(this.heroArmor, hero.armor);
     if (hero.profession === 'necromancer') {

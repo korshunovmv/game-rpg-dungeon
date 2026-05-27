@@ -1,4 +1,5 @@
 import { getProfession } from './classes.js';
+import { getDexterityCritBonus } from './attributes.js';
 
 export function getLuck(hero) {
   if (!hero) return 5;
@@ -39,5 +40,5 @@ export function luckMerchantChance(baseChance, luck = 5) {
 }
 
 export function luckCritBonus(hero) {
-  return getLuck(hero) * 0.01 + (hero.bonusCrit ?? 0);
+  return getLuck(hero) * 0.01 + (hero.bonusCrit ?? 0) + getDexterityCritBonus(hero);
 }

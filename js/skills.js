@@ -1,6 +1,7 @@
 import { shuffle } from './utils.js';
 import { getProfession } from './classes.js';
 import { recalcMaxHp } from './items.js';
+import { getPerceptionVisionBonus } from './attributes.js';
 
 export const SKILL_DEFS = {
   strength: {
@@ -107,7 +108,7 @@ export function applySkillBonuses(hero) {
 
 export function getHeroVision(hero) {
   const prof = getProfession(hero.profession);
-  return prof.vision + (hero.bonusVision ?? 0);
+  return prof.vision + (hero.bonusVision ?? 0) + getPerceptionVisionBonus(hero);
 }
 
 export function getHeroSkillsList(hero) {

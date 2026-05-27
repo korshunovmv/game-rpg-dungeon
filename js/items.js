@@ -3,6 +3,7 @@ import { getProfession, canHeroEquipWeapon, canHeroEquipArmor } from './classes.
 import { applyLuckLootWeights, luckGoldBonus } from './luck.js';
 import { collectLegacyGrave } from './legacy.js';
 import { resolveWeaponSpriteId, resolveArmorSpriteId } from './sprites.js';
+import { getStrengthAtkBonus, getEnduranceHpBonus } from './attributes.js';
 import {
   buildWeapon,
   buildArmor,
@@ -187,6 +188,7 @@ export function getTotalAtk(hero) {
     + (hero.armor?.atk ?? 0)
     + (hero.bonusAtk ?? 0)
     + (hero.bonusMagic ?? 0)
+    + getStrengthAtkBonus(hero)
   );
 }
 
@@ -197,7 +199,7 @@ export function getTotalDef(hero) {
 export function recalcMaxHp(hero) {
   const bonus = hero.armor?.hp ?? 0;
   const prevMax = hero.maxHp;
-  hero.maxHp = hero.baseMaxHp + bonus + (hero.bonusHp ?? 0);
+  hero.maxHp = hero.baseMaxHp + bonus + (hero.bonusHp ?? 0) + getEnduranceHpBonus(hero);
   if (hero.maxHp > prevMax) {
     hero.hp += hero.maxHp - prevMax;
   }

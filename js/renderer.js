@@ -288,29 +288,96 @@ export class Renderer {
     const bob = Math.sin(Date.now() / 200 + item.x) * 1;
 
     if (item.type === 'gold') {
-      ctx.fillStyle = COLORS.gold;
-      ctx.fillRect(sx + 5, sy + 6 + bob, 6, 5);
-      ctx.fillRect(sx + 4, sy + 5 + bob, 8, 2);
+      // Coin pouch with a small bounce and highlight.
+      ctx.fillStyle = '#0d0d16';
+      ctx.fillRect(sx + 4, sy + 12 + bob, 8, 2);
+      ctx.fillStyle = '#1a1a28';
+      ctx.fillRect(sx + 5, sy + 11 + bob, 6, 1);
+
+      ctx.fillStyle = '#6a3f1f';
+      ctx.fillRect(sx + 5, sy + 4 + bob, 6, 2);
+      ctx.fillStyle = '#8a5a2e';
+      ctx.fillRect(sx + 4, sy + 6 + bob, 8, 6);
+      ctx.fillStyle = '#5a3218';
+      ctx.fillRect(sx + 4, sy + 6 + bob, 1, 6);
+      ctx.fillRect(sx + 11, sy + 6 + bob, 1, 6);
+      ctx.fillRect(sx + 5, sy + 11 + bob, 6, 1);
+
+      ctx.fillStyle = '#c89a4d';
+      ctx.fillRect(sx + 5, sy + 6 + bob, 6, 1);
+      ctx.fillStyle = '#4a2a12';
+      ctx.fillRect(sx + 6, sy + 5 + bob, 4, 1);
+      ctx.fillRect(sx + 6, sy + 7 + bob, 4, 1);
+
+      ctx.fillStyle = '#ffd76a';
+      ctx.fillRect(sx + 6, sy + 8 + bob, 3, 2);
+      ctx.fillRect(sx + 9, sy + 9 + bob, 1, 1);
+      ctx.fillStyle = '#fff2b0';
+      ctx.fillRect(sx + 7, sy + 8 + bob, 1, 1);
       return;
     }
 
     if (item.type.startsWith('potion')) {
       const color = item.color ?? COLORS.potion;
+      const fillH = item.type === 'potion_large' ? 6 : item.type === 'potion_small' ? 3 : 5;
+
+      ctx.fillStyle = '#0d0d16';
+      ctx.fillRect(sx + 5, sy + 13 + bob, 6, 1);
+
+      // Bottle body
+      ctx.fillStyle = '#cfd8e6';
+      ctx.fillRect(sx + 5, sy + 5 + bob, 6, 7);
+      ctx.fillRect(sx + 6, sy + 3 + bob, 4, 2);
+      ctx.fillStyle = '#9aa7ba';
+      ctx.fillRect(sx + 5, sy + 5 + bob, 1, 7);
+      ctx.fillRect(sx + 10, sy + 5 + bob, 1, 7);
+
+      // Cork and neck ring
+      ctx.fillStyle = '#7a532f';
+      ctx.fillRect(sx + 6, sy + 2 + bob, 4, 1);
+      ctx.fillStyle = '#5b3a1f';
+      ctx.fillRect(sx + 6, sy + 4 + bob, 4, 1);
+
+      // Liquid fill
+      const liquidY = sy + 12 + bob - fillH;
       ctx.fillStyle = color;
-      const h = item.type === 'potion_large' ? 7 : item.type === 'potion_small' ? 4 : 6;
-      ctx.fillRect(sx + 6, sy + 4 + (6 - h) + bob, 4, h);
+      ctx.fillRect(sx + 6, liquidY, 4, fillH);
+      ctx.fillStyle = '#ffffff66';
+      ctx.fillRect(sx + 6, liquidY, 1, Math.max(1, fillH - 1));
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(sx + 7, sy + 5 + bob, 2, 2);
+      ctx.fillRect(sx + 8, sy + 6 + bob, 1, 1);
       return;
     }
 
     if (item.type.startsWith('mana_potion')) {
       const color = item.color ?? '#4488ff';
+      const fillH = item.type === 'mana_potion_large' ? 6 : 4;
+
+      ctx.fillStyle = '#0d0d16';
+      ctx.fillRect(sx + 5, sy + 13 + bob, 6, 1);
+
+      // Bottle body
+      ctx.fillStyle = '#c7d6ff';
+      ctx.fillRect(sx + 5, sy + 5 + bob, 6, 7);
+      ctx.fillRect(sx + 6, sy + 3 + bob, 4, 2);
+      ctx.fillStyle = '#8ea5d6';
+      ctx.fillRect(sx + 5, sy + 5 + bob, 1, 7);
+      ctx.fillRect(sx + 10, sy + 5 + bob, 1, 7);
+
+      // Crystal cap
+      ctx.fillStyle = '#7ea2ff';
+      ctx.fillRect(sx + 6, sy + 2 + bob, 4, 1);
+      ctx.fillStyle = '#5e80dd';
+      ctx.fillRect(sx + 6, sy + 4 + bob, 4, 1);
+
+      // Mana fill
+      const liquidY = sy + 12 + bob - fillH;
       ctx.fillStyle = color;
-      const h = item.type === 'mana_potion_large' ? 7 : 5;
-      ctx.fillRect(sx + 6, sy + 4 + (6 - h) + bob, 4, h);
-      ctx.fillStyle = '#aaccff';
-      ctx.fillRect(sx + 7, sy + 5 + bob, 2, 2);
+      ctx.fillRect(sx + 6, liquidY, 4, fillH);
+      ctx.fillStyle = '#aaccff88';
+      ctx.fillRect(sx + 6, liquidY + 1, 4, 1);
+      ctx.fillStyle = '#e6f0ff';
+      ctx.fillRect(sx + 8, sy + 6 + bob, 1, 1);
       return;
     }
 
