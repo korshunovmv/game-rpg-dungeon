@@ -31,6 +31,8 @@ const DIRS = [
 const CARDINAL_DIRS = DIRS.slice(0, 4);
 
 export function canStep(map, fromX, fromY, toX, toY, blocked = new Set()) {
+  const tile = map[toY]?.[toX];
+  if (tile === TILES.LOCKED_DOOR) return false;
   if (!isWalkable(map, toX, toY) || blocked.has(key(toX, toY))) return false;
 
   const dx = toX - fromX;
@@ -484,6 +486,17 @@ function getUncollectedItemsInRoom(room, items) {
   );
 }
 
+function isLockedReward(item) {
+  return item.type === 'locked_skill';
+}
+
+function isCollectibleWhileLowHp(item) {
+  return isHealingItem(item)
+    || item.type === 'gold'
+    || item.type === 'locked_key'
+    || isLockedReward(item);
+}
+
 function getUnopenedChestsInRoom(room, chests) {
   return chests.filter(
     (c) => isUnopenedChest(c)
@@ -654,7 +667,7 @@ export function getExplorationTarget(
 
   const onItem = items.find((i) => !i.collected && i.x === hx && i.y === hy);
   if (onItem) {
-    if (!needHeal || isHealingItem(onItem) || onItem.type === 'gold') {
+    if (!needHeal || isCollectibleWhileLowHp(onItem)) {
       return { type: 'loot', target: onItem };
     }
   }
@@ -669,6 +682,17 @@ export function getExplorationTarget(
     const healerPath = findHealerPath(map, hx, hy, healers, blocked);
     if (healerPath) {
       return { type: 'heal-move', path: healerPath.path, goal: healerPath.goal };
+    }
+  }
+
+  const nearKey = items
+    .filter((i) => !i.collected && i.type === 'locked_key')
+    .map((i) => ({ item: i, dist: manhattan(hx, hy, i.x, i.y) }))
+    .sort((a, b) => a.dist - b.dist)[0];
+  if (nearKey) {
+    const path = findPath(map, hx, hy, nearKey.item.x, nearKey.item.y, blocked);
+    if (path?.length) {
+      return { type: 'move', path, goal: nearKey.item };
     }
   }
 

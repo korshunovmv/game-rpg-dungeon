@@ -10,6 +10,7 @@ export const TILES = {
   FLOOR: 2,
   DOOR: 3,
   STAIRS: 4,
+  LOCKED_DOOR: 5,
 };
 
 export const COLORS = {

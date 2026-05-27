@@ -8,6 +8,7 @@ import { getLuck } from './luck.js';
 import { spawnLegendaryMonsters } from './nemesis.js';
 import { createMonster } from './monsters.js';
 import { spawnChests } from './chests.js';
+import { SKILL_DEFS } from './skills.js';
 
 function createEmpty(w, h, fill = TILES.VOID) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -59,6 +60,172 @@ function connectRooms(map, a, b) {
   }
 }
 
+function makeKey(x, y) {
+  return `${x},${y}`;
+}
+
+function isInsideRoom(room, x, y) {
+  return x >= room.x && x < room.x + room.w && y >= room.y && y < room.y + room.h;
+}
+
+function corridorNeighbors(map, x, y) {
+  const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  return dirs.filter(([dx, dy]) => map[y + dy]?.[x + dx] === TILES.FLOOR);
+}
+
+function pickLockedDoorCandidate(map, room, spawn) {
+  const candidates = [];
+  for (let y = room.y; y < room.y + room.h; y += 1) {
+    for (let x = room.x; x < room.x + room.w; x += 1) {
+      if (map[y][x] !== TILES.FLOOR) continue;
+      const neighbors = corridorNeighbors(map, x, y);
+      if (neighbors.length !== 1) continue;
+
+      const [dx, dy] = neighbors[0];
+      const outsideX = x + dx;
+      const outsideY = y + dy;
+      if (isInsideRoom(room, outsideX, outsideY)) continue;
+
+      const dist = Math.abs(spawn.x - x) + Math.abs(spawn.y - y);
+      candidates.push({ x, y, dist });
+    }
+  }
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => b.dist - a.dist);
+  return candidates[0];
+}
+
+function floorTilesInRoom(room, blocked = new Set()) {
+  const tiles = [];
+  for (let y = room.y; y < room.y + room.h; y += 1) {
+    for (let x = room.x; x < room.x + room.w; x += 1) {
+      const k = makeKey(x, y);
+      if (blocked.has(k)) continue;
+      tiles.push({ x, y });
+    }
+  }
+  return tiles;
+}
+
+function pickRoomReward(floor, luck, random01, ri) {
+  const roll = random01();
+  if (roll < 0.34) {
+    const potions = ['potion_large', 'mana_potion_large'];
+    const kind = potions[ri(0, potions.length - 1)];
+    if (kind === 'mana_potion_large') {
+      return {
+        type: 'mana_potion_large',
+        name: 'Большой флакон маны',
+        restore: 28 + Math.floor(floor * 2),
+        color: '#66aaff',
+        unique: true,
+      };
+    }
+    return {
+      type: 'potion_large',
+      name: 'Большое зелье',
+      heal: 55 + Math.floor(floor * 2),
+      color: '#00ffaa',
+      unique: true,
+    };
+  }
+
+  if (roll < 0.67) {
+    return {
+      type: 'gold',
+      value: 20 + floor * 6 + Math.floor(luck * 1.5),
+      unique: true,
+    };
+  }
+
+  const skillPool = Object.values(SKILL_DEFS);
+  const skill = skillPool[ri(0, skillPool.length - 1)];
+  return {
+    type: 'locked_skill',
+    skillId: skill.id,
+    name: `Реликвия: ${skill.name}`,
+    unique: true,
+  };
+}
+
+function createLockedRoomFeature(dungeon, floor, luck = 5, rng = null) {
+  const { map, rooms, spawn, stairs } = dungeon;
+  if (!rooms.length || isBossFloor(floor)) return null;
+  const random01 = rng?.random ?? Math.random;
+  const ri = rng?.randInt ?? randInt;
+  if (random01() > 0.45) return null;
+
+  const sortedRooms = [...rooms]
+    .filter((r) => !(r.cx === spawn.x && r.cy === spawn.y))
+    .sort((a, b) => {
+      const da = Math.abs(a.cx - spawn.x) + Math.abs(a.cy - spawn.y);
+      const db = Math.abs(b.cx - spawn.x) + Math.abs(b.cy - spawn.y);
+      return db - da;
+    });
+
+  let chosenRoom = null;
+  let door = null;
+  for (const room of sortedRooms) {
+    const candidate = pickLockedDoorCandidate(map, room, spawn);
+    if (!candidate) continue;
+    chosenRoom = room;
+    door = candidate;
+    break;
+  }
+  if (!chosenRoom || !door) return null;
+
+  map[door.y][door.x] = TILES.LOCKED_DOOR;
+  const doorKey = makeKey(door.x, door.y);
+
+  const blocked = new Set([doorKey, makeKey(spawn.x, spawn.y), makeKey(stairs.x, stairs.y)]);
+  const keyCandidates = [];
+  for (let y = 0; y < MAP_H; y += 1) {
+    for (let x = 0; x < MAP_W; x += 1) {
+      if (map[y][x] !== TILES.FLOOR) continue;
+      if (isInsideRoom(chosenRoom, x, y)) continue;
+      const k = makeKey(x, y);
+      if (blocked.has(k)) continue;
+      keyCandidates.push({ x, y, dist: Math.abs(x - door.x) + Math.abs(y - door.y) });
+    }
+  }
+  if (!keyCandidates.length) {
+    map[door.y][door.x] = TILES.FLOOR;
+    return null;
+  }
+  keyCandidates.sort((a, b) => b.dist - a.dist);
+  const keyTile = keyCandidates[Math.min(2, keyCandidates.length - 1)];
+
+  const rewardTiles = floorTilesInRoom(chosenRoom, new Set([doorKey]));
+  if (!rewardTiles.length) {
+    map[door.y][door.x] = TILES.FLOOR;
+    return null;
+  }
+  const rewardTile = rewardTiles[ri(0, rewardTiles.length - 1)];
+
+  return {
+    door: { x: door.x, y: door.y },
+    room: chosenRoom,
+    key: {
+      id: `locked-key-${floor}-${Date.now()}`,
+      x: keyTile.x,
+      y: keyTile.y,
+      type: 'locked_key',
+      name: 'Ржавый ключ',
+      color: '#ffdd66',
+      collected: false,
+      unlockDoor: { x: door.x, y: door.y },
+      unique: true,
+    },
+    reward: {
+      id: `locked-reward-${floor}-${Date.now()}`,
+      x: rewardTile.x,
+      y: rewardTile.y,
+      collected: false,
+      ...pickRoomReward(floor, luck, random01, ri),
+    },
+  };
+}
+
 export function generateDungeon(floor = 1, seed = null) {
   const rng = seed != null ? createSeededRng(seed >>> 0) : null;
   const sh = rng?.shuffle ?? shuffle;
@@ -91,11 +258,22 @@ export function generateDungeon(floor = 1, seed = null) {
 
   map[farRoom.cy][farRoom.cx] = TILES.STAIRS;
 
+  const baseDungeon = {
+    map,
+    spawn,
+    stairs: { x: farRoom.cx, y: farRoom.cy },
+    rooms,
+  };
+
+  const lockedFeature = createLockedRoomFeature(baseDungeon, floor, 5, rng);
+
   return {
     map,
     spawn,
     stairs: { x: farRoom.cx, y: farRoom.cy },
     rooms,
+    lockedFeature,
+    seed: seed != null ? (seed >>> 0) : null,
   };
 }
 
@@ -107,14 +285,24 @@ export function isWalkable(map, x, y) {
 
 export function spawnEntities(dungeon, floor, hero = null, legends = []) {
   const luck = getLuck(hero);
-  const { map, rooms, spawn, stairs } = dungeon;
+  const { map, rooms, spawn, stairs, lockedFeature = null } = dungeon;
   const monsters = [];
   const items = [];
   const floorTiles = [];
+  const lockedRoomTiles = new Set();
+  if (lockedFeature?.room) {
+    for (let y = lockedFeature.room.y; y < lockedFeature.room.y + lockedFeature.room.h; y += 1) {
+      for (let x = lockedFeature.room.x; x < lockedFeature.room.x + lockedFeature.room.w; x += 1) {
+        lockedRoomTiles.add(makeKey(x, y));
+      }
+    }
+  }
 
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
-      if (map[y][x] === TILES.FLOOR && !(x === spawn.x && y === spawn.y)) {
+      if (map[y][x] === TILES.FLOOR
+        && !(x === spawn.x && y === spawn.y)
+        && !lockedRoomTiles.has(makeKey(x, y))) {
         floorTiles.push({ x, y });
       }
     }
@@ -146,6 +334,13 @@ export function spawnEntities(dungeon, floor, hero = null, legends = []) {
     items.push(createLootItem(pos, floor, i, luck));
   }
 
+  if (lockedFeature?.key) {
+    items.push(lockedFeature.key);
+  }
+  if (lockedFeature?.reward) {
+    items.push(lockedFeature.reward);
+  }
+
   occupied.clear();
   for (const m of monsters) occupied.add(`${m.x},${m.y}`);
   for (const item of items) occupied.add(`${item.x},${item.y}`);
@@ -165,5 +360,14 @@ export function spawnEntities(dungeon, floor, hero = null, legends = []) {
   const merchant = spawnMerchant(dungeon, floor, occupied, luck);
   const chests = spawnChests(dungeon, floor, occupied, luck);
 
-  return { monsters, items, traps, healers, merchant, chests, legendSpawns };
+  return {
+    monsters,
+    items,
+    traps,
+    healers,
+    merchant,
+    chests,
+    legendSpawns,
+    lockedFeature,
+  };
 }

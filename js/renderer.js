@@ -245,13 +245,32 @@ export class Renderer {
     const ctx = this.ctx;
 
     if (!lit) {
-      drawFogTile(ctx, sx, sy, theme, tile === TILES.WALL);
+      drawFogTile(ctx, sx, sy, theme, tile === TILES.WALL || tile === TILES.LOCKED_DOOR);
       return;
     }
 
     switch (tile) {
       case TILES.WALL:
         drawWallTile(ctx, sx, sy, map, x, y, theme);
+        break;
+      case TILES.LOCKED_DOOR:
+      case TILES.DOOR:
+        drawFloorTile(ctx, sx, sy, theme, x, y);
+        ctx.fillStyle = '#5a3b20';
+        ctx.fillRect(sx + 4, sy + 2, 8, 12);
+        ctx.fillStyle = '#8b5e34';
+        ctx.fillRect(sx + 5, sy + 3, 6, 10);
+        ctx.fillStyle = '#3c2514';
+        ctx.fillRect(sx + 4, sy + 2, 1, 12);
+        ctx.fillRect(sx + 11, sy + 2, 1, 12);
+        if (tile === TILES.LOCKED_DOOR) {
+          ctx.fillStyle = '#ffdd66';
+          ctx.fillRect(sx + 8, sy + 7, 2, 2);
+          ctx.fillRect(sx + 7, sy + 9, 4, 1);
+        } else {
+          ctx.fillStyle = '#ddbb88';
+          ctx.fillRect(sx + 9, sy + 8, 1, 1);
+        }
         break;
       case TILES.STAIRS:
         drawStairsTile(ctx, sx, sy, theme);
@@ -292,6 +311,28 @@ export class Renderer {
       ctx.fillRect(sx + 6, sy + 4 + (6 - h) + bob, 4, h);
       ctx.fillStyle = '#aaccff';
       ctx.fillRect(sx + 7, sy + 5 + bob, 2, 2);
+      return;
+    }
+
+    if (item.type === 'locked_key') {
+      ctx.fillStyle = '#ffdd66';
+      ctx.fillRect(sx + 5, sy + 7 + bob, 6, 2);
+      ctx.fillRect(sx + 9, sy + 6 + bob, 2, 4);
+      ctx.fillRect(sx + 4, sy + 6 + bob, 2, 4);
+      ctx.fillStyle = '#aa8833';
+      ctx.fillRect(sx + 6, sy + 8 + bob, 1, 2);
+      ctx.fillRect(sx + 8, sy + 8 + bob, 1, 2);
+      return;
+    }
+
+    if (item.type === 'locked_skill') {
+      ctx.fillStyle = '#7a52c8';
+      ctx.fillRect(sx + 5, sy + 4 + bob, 6, 8);
+      ctx.fillStyle = '#b08cff';
+      ctx.fillRect(sx + 6, sy + 5 + bob, 4, 1);
+      ctx.fillRect(sx + 6, sy + 9 + bob, 4, 1);
+      ctx.fillStyle = '#ffdd88';
+      ctx.fillRect(sx + 7, sy + 7 + bob, 2, 2);
       return;
     }
 
@@ -484,6 +525,7 @@ export class Renderer {
         if (!explored.has(key(x, y))) continue;
         const tile = map[y][x];
         if (tile === TILES.WALL) ctx.fillStyle = theme.minimapWall;
+        else if (tile === TILES.LOCKED_DOOR) ctx.fillStyle = '#aa8833';
         else if (tile === TILES.STAIRS) ctx.fillStyle = theme.stairs;
         else ctx.fillStyle = theme.minimapFloor;
         ctx.fillRect(mx + x * scale, my + y * scale, scale, scale);

@@ -68,6 +68,7 @@ export class Game {
     this.legendaryFoes = [];
     this.pendingLegacies = [];
     this.floorSeeds = {};
+    this.lockedFeature = null;
     this.lastCombatMonster = null;
     this.combatFocus = null;
     this.lastHeroPos = null;
@@ -113,6 +114,7 @@ export class Game {
     this.traps = entities.traps;
     this.healers = entities.healers;
     this.merchant = entities.merchant ?? null;
+    this.lockedFeature = entities.lockedFeature ?? null;
     this.logLegendSpawns(entities.legendSpawns ?? []);
     this.spawnLegacyGrave(floor);
   }
@@ -156,6 +158,9 @@ export class Game {
     this.state = 'playing';
     this.revealAroundHero();
     this.ui.log(`Этаж ${floor}.`, 'info');
+    if (this.lockedFeature?.door) {
+      this.ui.log('На этаже есть запертая дверь: ищите ключ', 'info');
+    }
     const boss = getAliveBoss(this.monsters);
     if (boss) {
       this.ui.log(`БОСС: ${boss.name} охраняет лестницу!`, 'boss');
@@ -321,7 +326,22 @@ export class Game {
         this.log(`${label}${result.name} продан`, 'loot');
       }
       this.renderer.addParticle(x, y, '#888899', 20);
+    } else if (result.type === 'locked_key') {
+      this.log(`${result.name}: дверь отперта`, 'loot');
+      this.unlockLockedDoor(result.unlockDoor);
+      this.renderer.addParticle(x, y, '#ffdd66', 28);
+    } else if (result.type === 'locked_skill') {
+      this.log(`Реликвия: навык «${result.name}» (ур. ${result.level})`, 'loot');
+      this.renderer.addParticle(x, y, '#aa88ff', 35);
     }
+  }
+
+  unlockLockedDoor(door) {
+    if (!door || door.x == null || door.y == null) return;
+    if (!this.map?.[door.y]) return;
+    if (this.map[door.y][door.x] !== TILES.LOCKED_DOOR) return;
+    this.map[door.y][door.x] = TILES.DOOR;
+    this.log('Запертая дверь открылась', 'info');
   }
 
   doOpenChest(chest) {
@@ -1094,6 +1114,9 @@ export class Game {
     this.explored = new Set();
     this.currentPath = [];
     this.revealAroundHero();
+    if (this.lockedFeature?.door) {
+      this.log('На этаже есть запертая дверь: ищите ключ', 'info');
+    }
     const boss = getAliveBoss(this.monsters);
     if (boss) {
       this.log(`БОСС: ${boss.name} охраняет лестницу!`, 'boss');
@@ -1158,6 +1181,7 @@ export class Game {
     this.legendaryFoes = [];
     this.pendingLegacies = getUnclaimedLegacies();
     this.floorSeeds = {};
+    this.lockedFeature = null;
     this.lastCombatMonster = null;
     this.currentPath = [];
     this.accumulator = 0;

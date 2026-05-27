@@ -10,6 +10,7 @@ import {
   getEquipSellValue,
   rarityPriorityBonus,
 } from './rarity.js';
+import { learnSkill, getSkillDef } from './skills.js';
 
 export const POTIONS = {
   potion_small: { id: 'potion_small', name: 'Малое зелье', heal: 15, color: '#66cc66' },
@@ -383,6 +384,24 @@ export function collectItem(hero, item) {
       type: 'mana_flask',
       name: item.name,
       count: hero.manaFlasks.length,
+    };
+  }
+
+  if (item.type === 'locked_key') {
+    return {
+      type: 'locked_key',
+      name: item.name,
+      unlockDoor: item.unlockDoor,
+    };
+  }
+
+  if (item.type === 'locked_skill') {
+    const learned = learnSkill(hero, item.skillId);
+    const def = getSkillDef(item.skillId);
+    return {
+      type: 'locked_skill',
+      name: def?.name ?? item.name,
+      level: learned?.level ?? 1,
     };
   }
 
