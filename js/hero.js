@@ -9,7 +9,23 @@ import { generateHeroName } from './names.js';
 import { initHeroSkills } from './skills.js';
 import { getHeroMaxMana } from './attributes.js';
 
-export function createHero(spawn, professionId = 'warrior') {
+const GENDER_MODIFIERS = {
+  male: { strength: 1, endurance: 1, dexterity: -1 },
+  female: { dexterity: 1, intelligence: 1, endurance: -1 },
+};
+
+function applyGenderModifiers(baseAttributes, gender = 'male') {
+  const mod = GENDER_MODIFIERS[gender] ?? GENDER_MODIFIERS.male;
+  return {
+    strength: Math.max(1, (baseAttributes.strength ?? 5) + (mod.strength ?? 0)),
+    dexterity: Math.max(1, (baseAttributes.dexterity ?? 5) + (mod.dexterity ?? 0)),
+    intelligence: Math.max(1, (baseAttributes.intelligence ?? 5) + (mod.intelligence ?? 0)),
+    perception: Math.max(1, (baseAttributes.perception ?? 5) + (mod.perception ?? 0)),
+    endurance: Math.max(1, (baseAttributes.endurance ?? 5) + (mod.endurance ?? 0)),
+  };
+}
+
+export function createHero(spawn, professionId = 'warrior', gender = 'male') {
   const prof = getProfession(professionId);
   const baseAttributes = {
     strength: prof.attributes?.strength ?? 5,
@@ -18,8 +34,10 @@ export function createHero(spawn, professionId = 'warrior') {
     perception: prof.attributes?.perception ?? 5,
     endurance: prof.attributes?.endurance ?? 5,
   };
+  const finalAttributes = applyGenderModifiers(baseAttributes, gender);
   const hero = {
-    name: generateHeroName(),
+    name: generateHeroName(gender),
+    gender,
     profession: professionId,
     professionName: prof.name,
     color: prof.color,
@@ -30,7 +48,7 @@ export function createHero(spawn, professionId = 'warrior') {
     baseMaxHp: prof.hp,
     atk: prof.atk,
     def: prof.def,
-    ...baseAttributes,
+    ...finalAttributes,
     weapon: null,
     armor: null,
     level: 1,

@@ -22,6 +22,7 @@ class UI {
     this.heroLevel = document.getElementById('hero-level');
     this.heroFloor = document.getElementById('hero-floor');
     this.heroClass = document.getElementById('hero-class');
+    this.heroGender = document.getElementById('hero-gender');
     this.heroAtk = document.getElementById('hero-atk');
     this.heroDef = document.getElementById('hero-def');
     this.heroLuck = document.getElementById('hero-luck');
@@ -108,6 +109,7 @@ class UI {
     this.heroLevel.textContent = String(hero.level);
     this.heroFloor.textContent = String(hero.floor);
     this.heroClass.textContent = hero.professionName;
+    this.heroGender.textContent = hero.gender === 'female' ? 'Женский' : 'Мужской';
   }
 
   updateSkills(skills = []) {
@@ -239,8 +241,10 @@ function main() {
   document.querySelectorAll('.class-card').forEach((btn) => {
     btn.addEventListener('click', () => {
       const profession = btn.dataset.class;
+      const gender =
+        document.querySelector('input[name="hero-gender"]:checked')?.value ?? 'male';
       ui.hideClassSelect();
-      game.start(profession);
+      game.start(profession, gender);
       document.getElementById('btn-pause').textContent = '⏸ Пауза';
     });
   });

@@ -16,7 +16,19 @@ const NAME_FULL = [
   'Ивар', 'Ренгар', 'Талвор', 'Борис', 'Орвин', 'Зенон',
 ];
 
-export function generateHeroName() {
+const FEMALE_NAME_FULL = [
+  'Арина', 'Тайра', 'Гвена', 'Лиара', 'Мирена', 'Зарина', 'Кора', 'Лорина',
+  'Далия', 'Фарина', 'Элина', 'Велия', 'Серена', 'Ульна', 'Харина', 'Ивона',
+];
+
+export function generateHeroName(gender = 'male') {
+  if (gender === 'female') {
+    if (Math.random() < 0.45) {
+      return FEMALE_NAME_FULL[randInt(0, FEMALE_NAME_FULL.length - 1)];
+    }
+    return NAME_STARTS[randInt(0, NAME_STARTS.length - 1)]
+      + ['а', 'ия', 'ена', 'ира', 'ель'][randInt(0, 4)];
+  }
   if (Math.random() < 0.35) {
     return NAME_FULL[randInt(0, NAME_FULL.length - 1)];
   }

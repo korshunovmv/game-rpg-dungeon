@@ -134,6 +134,28 @@ body {
   text-align: center;
 }
 
+.gender-select {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.gender-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 6px;
+  color: var(--text);
+  background: #1f1f36;
+  border: 2px solid var(--border);
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.gender-option input {
+  accent-color: var(--accent);
+}
+
 .class-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

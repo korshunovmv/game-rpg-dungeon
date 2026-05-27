@@ -24,6 +24,16 @@
         <div class="overlay" id="overlay"></div>
         <div class="class-select" id="class-select">
           <h2>Выберите профессию</h2>
+          <div class="gender-select" role="radiogroup" aria-label="Пол героя">
+            <label class="gender-option">
+              <input type="radio" name="hero-gender" value="male" checked>
+              <span>Мужской</span>
+            </label>
+            <label class="gender-option">
+              <input type="radio" name="hero-gender" value="female">
+              <span>Женский</span>
+            </label>
+          </div>
           <div class="class-grid">
             <button class="class-card" data-class="warrior">
               <canvas class="class-preview" width="48" height="48" data-class="warrior"></canvas>
@@ -63,6 +73,7 @@
         <section class="stats">
           <h2>Герой</h2>
           <div class="stat-row"><span>Имя</span><strong id="hero-name">—</strong></div>
+          <div class="stat-row"><span>Пол</span><strong id="hero-gender">—</strong></div>
           <div class="stat-row"><span>Класс</span><strong id="hero-class">—</strong></div>
           <div class="stat-row"><span>Уровень</span><strong id="hero-level">1</strong></div>
           <div class="stat-row"><span>HP</span><strong id="hero-hp">—</strong></div>

@@ -55,6 +55,7 @@ export class Game {
     this.frame = 0;
     this.accumulator = 0;
     this.profession = null;
+    this.gender = 'male';
     this.state = 'class-select';
     this.map = null;
     this.hero = null;
@@ -76,8 +77,9 @@ export class Game {
     this.recentPositions = [];
   }
 
-  start(professionId) {
+  start(professionId, gender = 'male') {
     this.profession = professionId;
+    this.gender = gender;
     this.paused = false;
     this.ui.clearLog();
     this.newDungeon(1);
@@ -132,7 +134,7 @@ export class Game {
     this.rooms = dungeon.rooms;
 
     if (floor === 1) {
-      this.hero = createHero(dungeon.spawn, this.profession);
+      this.hero = createHero(dungeon.spawn, this.profession, this.gender);
       this.minions = [];
       this.legendaryFoes = [];
       this.ui.log(`${this.hero.professionName} ${this.hero.name} входит в подземелье`, 'info');
