@@ -3,23 +3,33 @@ import { getItemRarity, hasRarityGlow } from './rarity.js';
 const SKIN = '#ffccaa';
 const OUTLINE = '#ffffff';
 const EYE = '#223366';
+const SHADOW = '#0a0a14';
 
 function px(ctx, sx, sy, x, y, w, h, color, bounce = 0) {
   ctx.fillStyle = color;
   ctx.fillRect(sx + x, sy + y + bounce, w, h);
 }
 
+function drawHeroShadow(ctx, sx, sy) {
+  px(ctx, sx, sy, 3, 14, 10, 2, SHADOW, 0);
+  px(ctx, sx, sy, 5, 13, 6, 1, '#151525', 0);
+}
+
 function drawEyes(ctx, sx, sy, facing, bounce) {
   if (facing === 'up') {
-    px(ctx, sx, sy, 5, 4, 2, 2, EYE, bounce);
-    px(ctx, sx, sy, 9, 4, 2, 2, EYE, bounce);
+    px(ctx, sx, sy, 5, 4, 2, 1, EYE, bounce);
+    px(ctx, sx, sy, 9, 4, 2, 1, EYE, bounce);
   } else if (facing === 'down') {
     px(ctx, sx, sy, 5, 6, 2, 2, EYE, bounce);
     px(ctx, sx, sy, 9, 6, 2, 2, EYE, bounce);
+    px(ctx, sx, sy, 5, 6, 1, 1, '#ffffff', bounce);
+    px(ctx, sx, sy, 9, 6, 1, 1, '#ffffff', bounce);
   } else if (facing === 'left') {
     px(ctx, sx, sy, 4, 6, 2, 2, EYE, bounce);
+    px(ctx, sx, sy, 4, 6, 1, 1, '#ffffff', bounce);
   } else {
     px(ctx, sx, sy, 10, 6, 2, 2, EYE, bounce);
+    px(ctx, sx, sy, 10, 6, 1, 1, '#ffffff', bounce);
   }
 }
 
@@ -75,63 +85,102 @@ export function getHeroArmorId(hero) {
 }
 
 function drawWarrior(ctx, sx, sy, facing, bounce) {
-  px(ctx, sx, sy, 2, 2, 12, 13, OUTLINE, bounce);
-  px(ctx, sx, sy, 3, 3, 10, 11, '#992222', bounce);
-  px(ctx, sx, sy, 4, 3, 8, 3, '#cc4444', bounce);
+  drawHeroShadow(ctx, sx, sy);
+  px(ctx, sx, sy, 2, 2, 12, 12, OUTLINE, bounce);
+  px(ctx, sx, sy, 3, 4, 10, 9, '#7a1f1f', bounce);
+  px(ctx, sx, sy, 4, 5, 8, 5, '#b73333', bounce);
   px(ctx, sx, sy, 5, 5, 6, 5, SKIN, bounce);
-  px(ctx, sx, sy, 4, 2, 8, 2, '#888888', bounce);
-  px(ctx, sx, sy, 4, 10, 3, 3, '#662222', bounce);
-  px(ctx, sx, sy, 9, 10, 3, 3, '#662222', bounce);
+  px(ctx, sx, sy, 4, 2, 8, 3, '#777788', bounce);
+  px(ctx, sx, sy, 5, 1, 6, 2, '#aaaabb', bounce);
+  px(ctx, sx, sy, 3, 5, 2, 4, '#5f1717', bounce);
+  px(ctx, sx, sy, 11, 5, 2, 4, '#5f1717', bounce);
+  px(ctx, sx, sy, 4, 10, 3, 3, '#4f1515', bounce);
+  px(ctx, sx, sy, 9, 10, 3, 3, '#4f1515', bounce);
+  px(ctx, sx, sy, 5, 13, 2, 1, '#332222', bounce);
+  px(ctx, sx, sy, 9, 13, 2, 1, '#332222', bounce);
+  px(ctx, sx, sy, 6, 4, 4, 1, '#dddddd', bounce);
+  px(ctx, sx, sy, 6, 10, 4, 1, '#ddaa44', bounce);
   drawEyes(ctx, sx, sy, facing, bounce);
 }
 
 function drawArcher(ctx, sx, sy, facing, bounce) {
-  px(ctx, sx, sy, 2, 2, 12, 13, OUTLINE, bounce);
-  px(ctx, sx, sy, 3, 4, 10, 10, '#226622', bounce);
-  px(ctx, sx, sy, 4, 3, 8, 3, '#44aa44', bounce);
+  drawHeroShadow(ctx, sx, sy);
+  px(ctx, sx, sy, 2, 2, 12, 12, OUTLINE, bounce);
+  px(ctx, sx, sy, 3, 4, 10, 9, '#1f5526', bounce);
+  px(ctx, sx, sy, 4, 5, 8, 5, '#2f8a38', bounce);
   px(ctx, sx, sy, 5, 5, 6, 5, SKIN, bounce);
-  px(ctx, sx, sy, 5, 3, 6, 2, '#335533', bounce);
-  px(ctx, sx, sy, 4, 11, 3, 2, '#224422', bounce);
-  px(ctx, sx, sy, 9, 11, 3, 2, '#224422', bounce);
+  px(ctx, sx, sy, 4, 3, 8, 3, '#3f7a35', bounce);
+  px(ctx, sx, sy, 5, 2, 6, 2, '#55aa44', bounce);
+  px(ctx, sx, sy, 10, 2, 3, 2, '#88cc66', bounce);
+  px(ctx, sx, sy, 3, 6, 2, 4, '#183d1c', bounce);
+  px(ctx, sx, sy, 11, 6, 2, 4, '#183d1c', bounce);
+  px(ctx, sx, sy, 4, 10, 3, 3, '#183d1c', bounce);
+  px(ctx, sx, sy, 9, 10, 3, 3, '#183d1c', bounce);
+  px(ctx, sx, sy, 5, 13, 2, 1, '#112811', bounce);
+  px(ctx, sx, sy, 9, 13, 2, 1, '#112811', bounce);
+  px(ctx, sx, sy, 5, 10, 6, 1, '#886633', bounce);
+  px(ctx, sx, sy, 4, 7, 1, 2, '#aa8855', bounce);
   drawEyes(ctx, sx, sy, facing, bounce);
 }
 
 function drawMage(ctx, sx, sy, facing, bounce) {
-  px(ctx, sx, sy, 2, 2, 12, 13, OUTLINE, bounce);
-  px(ctx, sx, sy, 3, 5, 10, 9, '#5522aa', bounce);
-  px(ctx, sx, sy, 4, 2, 8, 4, '#8844ff', bounce);
-  px(ctx, sx, sy, 3, 1, 10, 2, '#8844ff', bounce);
-  px(ctx, sx, sy, 6, 0, 4, 2, '#aa66ff', bounce);
+  drawHeroShadow(ctx, sx, sy);
+  px(ctx, sx, sy, 2, 1, 12, 13, OUTLINE, bounce);
+  px(ctx, sx, sy, 3, 5, 10, 8, '#4b1f8f', bounce);
+  px(ctx, sx, sy, 4, 6, 8, 6, '#6732c8', bounce);
   px(ctx, sx, sy, 5, 6, 6, 5, SKIN, bounce);
-  px(ctx, sx, sy, 4, 4, 8, 2, '#6633bb', bounce);
-  px(ctx, sx, sy, 6, 12, 4, 2, '#aa66ff', bounce);
+  px(ctx, sx, sy, 4, 2, 8, 4, '#7733dd', bounce);
+  px(ctx, sx, sy, 3, 1, 10, 2, '#8844ff', bounce);
+  px(ctx, sx, sy, 6, 0, 4, 2, '#bb77ff', bounce);
+  px(ctx, sx, sy, 7, 0, 2, 1, '#ffffff', bounce);
+  px(ctx, sx, sy, 4, 4, 8, 2, '#3e1a77', bounce);
+  px(ctx, sx, sy, 3, 8, 2, 4, '#35135f', bounce);
+  px(ctx, sx, sy, 11, 8, 2, 4, '#35135f', bounce);
+  px(ctx, sx, sy, 5, 12, 6, 2, '#2d104f', bounce);
+  px(ctx, sx, sy, 6, 12, 4, 1, '#aa66ff', bounce);
+  px(ctx, sx, sy, 7, 7, 2, 2, '#ccaaFF', bounce);
   drawEyes(ctx, sx, sy, facing, bounce);
 }
 
 function drawThief(ctx, sx, sy, facing, bounce) {
-  px(ctx, sx, sy, 2, 2, 12, 13, OUTLINE, bounce);
-  px(ctx, sx, sy, 3, 4, 10, 10, '#444422', bounce);
-  px(ctx, sx, sy, 4, 3, 8, 3, '#222211', bounce);
+  drawHeroShadow(ctx, sx, sy);
+  px(ctx, sx, sy, 2, 2, 12, 12, OUTLINE, bounce);
+  px(ctx, sx, sy, 3, 4, 10, 9, '#2d2d18', bounce);
+  px(ctx, sx, sy, 4, 6, 8, 5, '#4a4a22', bounce);
   px(ctx, sx, sy, 5, 5, 6, 4, SKIN, bounce);
-  px(ctx, sx, sy, 4, 4, 8, 2, '#111108', bounce);
-  px(ctx, sx, sy, 6, 5, 4, 1, '#111108', bounce);
+  px(ctx, sx, sy, 4, 3, 8, 3, '#121208', bounce);
+  px(ctx, sx, sy, 4, 4, 8, 2, '#090906', bounce);
+  px(ctx, sx, sy, 6, 5, 4, 1, '#090906', bounce);
   px(ctx, sx, sy, 11, 4, 2, 2, '#ffd700', bounce);
-  px(ctx, sx, sy, 4, 11, 3, 2, '#222211', bounce);
-  px(ctx, sx, sy, 9, 11, 3, 2, '#222211', bounce);
+  px(ctx, sx, sy, 12, 5, 1, 1, '#fff2aa', bounce);
+  px(ctx, sx, sy, 3, 7, 2, 4, '#17170b', bounce);
+  px(ctx, sx, sy, 11, 7, 2, 4, '#17170b', bounce);
+  px(ctx, sx, sy, 4, 10, 3, 3, '#151508', bounce);
+  px(ctx, sx, sy, 9, 10, 3, 3, '#151508', bounce);
+  px(ctx, sx, sy, 5, 13, 2, 1, '#080804', bounce);
+  px(ctx, sx, sy, 9, 13, 2, 1, '#080804', bounce);
+  px(ctx, sx, sy, 5, 10, 6, 1, '#aa8844', bounce);
   drawEyes(ctx, sx, sy, facing, bounce);
 }
 
 function drawNecromancer(ctx, sx, sy, facing, bounce) {
-  px(ctx, sx, sy, 2, 2, 12, 13, OUTLINE, bounce);
-  px(ctx, sx, sy, 3, 4, 10, 10, '#1a331a', bounce);
-  px(ctx, sx, sy, 4, 2, 8, 3, '#223322', bounce);
-  px(ctx, sx, sy, 5, 5, 6, 4, '#aaccaa', bounce);
-  px(ctx, sx, sy, 4, 4, 8, 2, '#111811', bounce);
+  drawHeroShadow(ctx, sx, sy);
+  px(ctx, sx, sy, 2, 2, 12, 12, OUTLINE, bounce);
+  px(ctx, sx, sy, 3, 4, 10, 9, '#142814', bounce);
+  px(ctx, sx, sy, 4, 6, 8, 6, '#1f3b1f', bounce);
+  px(ctx, sx, sy, 5, 5, 6, 4, '#b8d0b8', bounce);
+  px(ctx, sx, sy, 4, 2, 8, 3, '#1c2a1c', bounce);
+  px(ctx, sx, sy, 4, 4, 8, 2, '#0b120b', bounce);
   px(ctx, sx, sy, 5, 4, 2, 2, '#88ff44', bounce);
   px(ctx, sx, sy, 9, 4, 2, 2, '#88ff44', bounce);
-  px(ctx, sx, sy, 4, 11, 2, 3, '#ccccaa', bounce);
-  px(ctx, sx, sy, 10, 11, 2, 3, '#ccccaa', bounce);
+  px(ctx, sx, sy, 5, 4, 1, 1, '#ddff99', bounce);
+  px(ctx, sx, sy, 9, 4, 1, 1, '#ddff99', bounce);
+  px(ctx, sx, sy, 3, 7, 2, 5, '#0c180c', bounce);
+  px(ctx, sx, sy, 11, 7, 2, 5, '#0c180c', bounce);
+  px(ctx, sx, sy, 4, 11, 2, 3, '#d8d8aa', bounce);
+  px(ctx, sx, sy, 10, 11, 2, 3, '#d8d8aa', bounce);
   px(ctx, sx, sy, 6, 12, 4, 2, '#44aa44', bounce);
+  px(ctx, sx, sy, 7, 10, 2, 2, '#88ff44', bounce);
 }
 
 function overlayArmorLeather(ctx, sx, sy, color, bounce) {

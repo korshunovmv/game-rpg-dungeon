@@ -76,6 +76,10 @@ function wallVariant(x, y) {
   return (((x * 73856093) ^ (y * 19349663)) >>> 0) & 3;
 }
 
+function wallDetail(x, y) {
+  return (((x * 83492791) ^ (y * 2654435761)) >>> 0) & 7;
+}
+
 function floorSpot(x, y) {
   return (((x * 92837111) ^ (y * 689287499)) >>> 0) & 7;
 }
@@ -133,46 +137,42 @@ export function drawFogTile(ctx, sx, sy, theme, isWallTile) {
   }
 }
 
-function drawWallFace(ctx, sx, sy, theme, variant) {
-  ctx.fillStyle = theme.wall.face;
-  ctx.fillRect(sx, sy, 16, 16);
+function drawStoneBlocks(ctx, sx, sy, theme, variant, detail) {
+  const rowOffset = variant % 2 === 0 ? 0 : 3;
+
+  ctx.fillStyle = theme.wall.shadow;
+  ctx.fillRect(sx + 1, sy + 5, 14, 1);
+  ctx.fillRect(sx + 1, sy + 10, 14, 1);
+  ctx.fillRect(sx + 5 + rowOffset, sy + 1, 1, 4);
+  ctx.fillRect(sx + 11 - rowOffset, sy + 6, 1, 4);
+  ctx.fillRect(sx + 4 + rowOffset, sy + 11, 1, 4);
+
   ctx.fillStyle = theme.wall.top;
-  ctx.fillRect(sx, sy, 16, 4);
+  ctx.fillRect(sx + 2, sy + 1, 5, 1);
+  ctx.fillRect(sx + 9, sy + 6, 5, 1);
+  ctx.fillRect(sx + 3, sy + 11, 4, 1);
+
+  ctx.fillStyle = theme.wall.accent;
+  if (detail & 1) ctx.fillRect(sx + 3, sy + 7, 2, 1);
+  if (detail & 2) ctx.fillRect(sx + 10, sy + 12, 3, 1);
+  if (detail & 4) ctx.fillRect(sx + 12, sy + 3, 1, 2);
+}
+
+function drawWallBevel(ctx, sx, sy, theme) {
+  ctx.fillStyle = theme.wall.top;
+  ctx.fillRect(sx, sy, 16, 2);
+  ctx.fillRect(sx + 1, sy + 2, 14, 1);
   ctx.fillStyle = theme.wall.shadow;
   ctx.fillRect(sx, sy + 14, 16, 2);
-  ctx.fillRect(sx, sy, 2, 16);
+  ctx.fillRect(sx, sy, 1, 16);
+  ctx.fillRect(sx + 15, sy + 3, 1, 13);
+}
 
-  switch (variant) {
-    case 0:
-      ctx.fillStyle = theme.wall.accent;
-      for (let row = 0; row < 3; row++) {
-        const offset = row % 2 === 0 ? 0 : 3;
-        for (let col = 0; col < 3; col++) {
-          ctx.fillRect(sx + 2 + offset + col * 5, sy + 5 + row * 4, 4, 3);
-        }
-      }
-      break;
-    case 1:
-      ctx.fillStyle = theme.wall.accent;
-      ctx.fillRect(sx + 4, sy + 6, 8, 1);
-      ctx.fillRect(sx + 3, sy + 10, 10, 1);
-      ctx.fillRect(sx + 6, sy + 4, 1, 8);
-      break;
-    case 2:
-      ctx.fillStyle = theme.wall.accent;
-      for (let i = 0; i < 5; i++) {
-        ctx.fillRect(sx + 2 + (i % 3) * 4, sy + 4 + i * 2, 2, 2);
-      }
-      break;
-    default:
-      ctx.fillStyle = theme.wall.top;
-      ctx.fillRect(sx + 3, sy + 5, 10, 2);
-      ctx.fillRect(sx + 3, sy + 9, 10, 2);
-      ctx.fillStyle = theme.wall.shadow;
-      ctx.fillRect(sx + 3, sy + 7, 10, 1);
-      ctx.fillRect(sx + 3, sy + 11, 10, 1);
-  }
-
+function drawWallFace(ctx, sx, sy, theme, variant, detail) {
+  ctx.fillStyle = theme.wall.face;
+  ctx.fillRect(sx, sy, 16, 16);
+  drawStoneBlocks(ctx, sx, sy, theme, variant, detail);
+  drawWallBevel(ctx, sx, sy, theme);
   applyThemeWallDeco(ctx, sx, sy, theme, variant);
 }
 
@@ -197,50 +197,39 @@ function applyThemeWallDeco(ctx, sx, sy, theme, variant) {
   }
 }
 
-function drawWallMass(ctx, sx, sy, theme, variant) {
+function drawWallMass(ctx, sx, sy, theme, variant, detail) {
   ctx.fillStyle = theme.wall.base;
   ctx.fillRect(sx, sy, 16, 16);
 
-  switch (variant) {
-    case 0:
-      ctx.fillStyle = theme.wall.shadow;
-      for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 4; col++) {
-          if ((row + col) % 2 === 0) ctx.fillRect(sx + col * 4, sy + row * 4, 4, 4);
-        }
-      }
-      ctx.fillStyle = theme.wall.top;
-      ctx.fillRect(sx, sy, 16, 2);
-      break;
-    case 1:
-      ctx.fillStyle = theme.wall.top;
-      ctx.fillRect(sx, sy, 16, 3);
-      ctx.fillStyle = theme.wall.accent;
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(sx + 1, sy + 4 + i * 3, 14, 1);
-      }
-      break;
-    case 2:
-      ctx.fillStyle = theme.wall.face;
-      ctx.fillRect(sx + 2, sy + 2, 12, 12);
-      ctx.fillStyle = theme.wall.shadow;
-      ctx.fillRect(sx + 4, sy + 5, 8, 1);
-      ctx.fillRect(sx + 5, sy + 9, 6, 1);
-      break;
-    default:
-      ctx.fillStyle = theme.wall.accent;
-      ctx.fillRect(sx + 3, sy + 3, 4, 4);
-      ctx.fillRect(sx + 9, sy + 3, 4, 4);
-      ctx.fillRect(sx + 3, sy + 9, 4, 4);
-      ctx.fillRect(sx + 9, sy + 9, 4, 4);
-      ctx.fillStyle = theme.wall.top;
-      ctx.fillRect(sx, sy, 16, 2);
+  ctx.fillStyle = theme.wall.shadow;
+  ctx.fillRect(sx, sy + 15, 16, 1);
+  ctx.fillRect(sx, sy, 1, 16);
+  ctx.fillRect(sx + 4, sy + 4, 8, 1);
+  ctx.fillRect(sx + 2, sy + 10, 12, 1);
+
+  ctx.fillStyle = theme.wall.face;
+  if (variant === 0 || variant === 3) {
+    ctx.fillRect(sx + 2, sy + 2, 5, 3);
+    ctx.fillRect(sx + 9, sy + 3, 5, 3);
+    ctx.fillRect(sx + 3, sy + 8, 4, 3);
+    ctx.fillRect(sx + 10, sy + 11, 4, 3);
+  } else {
+    ctx.fillRect(sx + 3, sy + 2, 10, 3);
+    ctx.fillRect(sx + 2, sy + 7, 5, 3);
+    ctx.fillRect(sx + 9, sy + 8, 5, 3);
+    ctx.fillRect(sx + 4, sy + 12, 8, 2);
   }
+
+  ctx.fillStyle = theme.wall.top;
+  ctx.fillRect(sx, sy, 16, 2);
+  if (detail & 1) ctx.fillRect(sx + 4, sy + 6, 3, 1);
+  if (detail & 2) ctx.fillRect(sx + 11, sy + 1, 2, 1);
+  if (detail & 4) ctx.fillRect(sx + 7, sy + 13, 3, 1);
 
   applyThemeWallDeco(ctx, sx, sy, theme, variant);
 }
 
-function drawWallCorner(ctx, sx, sy, theme, corner) {
+function drawWallCorner(ctx, sx, sy, theme, corner, variant, detail) {
   ctx.fillStyle = theme.wall.base;
   ctx.fillRect(sx, sy, 16, 16);
   ctx.fillStyle = theme.wall.face;
@@ -257,10 +246,21 @@ function drawWallCorner(ctx, sx, sy, theme, corner) {
     ctx.fillRect(sx + 4, sy, 12, 16);
     ctx.fillRect(sx, sy + 4, 16, 12);
   }
-  ctx.fillStyle = theme.wall.top;
-  ctx.fillRect(sx, sy, 16, 3);
+  drawStoneBlocks(ctx, sx, sy, theme, variant, detail);
+  drawWallBevel(ctx, sx, sy, theme);
+
   ctx.fillStyle = theme.wall.shadow;
-  ctx.fillRect(sx, sy + 13, 16, 3);
+  if (corner === 'ne') {
+    ctx.fillRect(sx + 12, sy + 12, 4, 4);
+  } else if (corner === 'nw') {
+    ctx.fillRect(sx, sy + 12, 4, 4);
+  } else if (corner === 'se') {
+    ctx.fillRect(sx + 12, sy, 4, 4);
+  } else {
+    ctx.fillRect(sx, sy, 4, 4);
+  }
+
+  applyThemeWallDeco(ctx, sx, sy, theme, variant);
 }
 
 export function drawWallTile(ctx, sx, sy, map, x, y, theme) {
@@ -270,30 +270,31 @@ export function drawWallTile(ctx, sx, sy, map, x, y, theme) {
   const openW = isOpen(map, x - 1, y);
   const openCount = [openN, openS, openE, openW].filter(Boolean).length;
   const variant = wallVariant(x, y);
+  const detail = wallDetail(x, y);
 
   if (openCount === 0) {
-    drawWallMass(ctx, sx, sy, theme, variant);
+    drawWallMass(ctx, sx, sy, theme, variant, detail);
     return;
   }
 
   if (openS && openE && !openN && !openW) {
-    drawWallCorner(ctx, sx, sy, theme, 'ne');
+    drawWallCorner(ctx, sx, sy, theme, 'ne', variant, detail);
     return;
   }
   if (openS && openW && !openN && !openE) {
-    drawWallCorner(ctx, sx, sy, theme, 'nw');
+    drawWallCorner(ctx, sx, sy, theme, 'nw', variant, detail);
     return;
   }
   if (openN && openE && !openS && !openW) {
-    drawWallCorner(ctx, sx, sy, theme, 'se');
+    drawWallCorner(ctx, sx, sy, theme, 'se', variant, detail);
     return;
   }
   if (openN && openW && !openS && !openE) {
-    drawWallCorner(ctx, sx, sy, theme, 'sw');
+    drawWallCorner(ctx, sx, sy, theme, 'sw', variant, detail);
     return;
   }
 
-  drawWallFace(ctx, sx, sy, theme, variant);
+  drawWallFace(ctx, sx, sy, theme, variant, detail);
 
   if (openN) {
     ctx.fillStyle = theme.wall.shadow;
