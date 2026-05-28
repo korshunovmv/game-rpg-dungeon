@@ -61,6 +61,11 @@ export function createBoss(floor, pos) {
     goldReward: 25 + tier * 30 + floor * 8,
     alive: true,
     isBoss: true,
+    phase: 1,
+    phase2Triggered: false,
+    phaseThreshold: 0.5,
+    enragedAtkBonus: 0,
+    enragedHasteTurns: 0,
     color: template.color,
     tier,
   };

@@ -527,6 +527,20 @@ export class Game {
     this.ui.log(msg, type);
   }
 
+  updateBossPhase(monster) {
+    if (!monster?.isBoss || !monster.alive || monster.phase2Triggered) return;
+    const hpRatio = monster.hp / Math.max(1, monster.maxHp);
+    if (hpRatio > (monster.phaseThreshold ?? 0.5)) return;
+
+    monster.phase = 2;
+    monster.phase2Triggered = true;
+    monster.enragedAtkBonus = 2 + Math.floor((monster.tier ?? 1) / 2);
+    monster.enragedHasteTurns = 10 + (monster.tier ?? 1) * 2;
+    this.log(`${monster.name} впадает в ярость! (фаза 2)`, 'boss');
+    this.renderer.shakeScreen(8);
+    this.renderer.addParticle(monster.x, monster.y, monster.color ?? '#ff6644', 45);
+  }
+
   getCombatProjectile(result, onComplete) {
     if (result.healed || result.shielded) return null;
     if (!result.ranged || result.heroDmg <= 0) return null;
@@ -1171,6 +1185,7 @@ export class Game {
       const rangeNote = result.ranged ? ' (дист.)' : '';
       const critNote = result.crit ? ' Крит!' : '';
       this.log(`${result.attackLabel}${rangeNote} по ${monster.name}: −${result.heroDmg} HP${critNote}`, 'combat');
+      this.updateBossPhase(monster);
     }
 
     if (result.drained > 0) {
@@ -1207,6 +1222,7 @@ export class Game {
     for (const hit of result.aoeHits ?? []) {
       this.renderer.addParticle(hit.monster.x, hit.monster.y, spellColor, 18);
       this.log(`  ↳ ${hit.name}: −${hit.damage} HP`, 'combat');
+      this.updateBossPhase(hit.monster);
       if (hit.dead) {
         hit.monster.alive = false;
         if (this.combatFocus === hit.monster) {

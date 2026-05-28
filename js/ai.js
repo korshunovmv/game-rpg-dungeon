@@ -860,6 +860,56 @@ export function canMonsterAttackHero(map, monster, hero) {
   return hasLineOfSight(map, monster.x, monster.y, hero.x, hero.y);
 }
 
+function findBestRetreatStep(map, monster, hero, occupied, options = {}) {
+  const { preferRanged = false } = options;
+  const currentDist = manhattan(monster.x, monster.y, hero.x, hero.y);
+  const range = getMonsterAttackRange(monster);
+  let best = null;
+
+  for (const [dx, dy] of CARDINAL_DIRS) {
+    const nx = monster.x + dx;
+    const ny = monster.y + dy;
+    if (!canStep(map, monster.x, monster.y, nx, ny, occupied)) continue;
+    const nextDist = manhattan(nx, ny, hero.x, hero.y);
+    const los = hasLineOfSight(map, nx, ny, hero.x, hero.y);
+    const inRange = nextDist <= range;
+
+    let score = (nextDist - currentDist) * 8 + nextDist * 1.2;
+    if (preferRanged) {
+      if (nextDist <= 1) score -= 20;
+      if (los && inRange && nextDist > 1) score += 9;
+      if (!los) score -= 2;
+    }
+
+    if (!best || score > best.score) {
+      best = { x: nx, y: ny, score };
+    }
+  }
+
+  return best;
+}
+
+function findRangedFiringStep(map, monster, hero, occupied) {
+  const range = getMonsterAttackRange(monster);
+  let best = null;
+
+  for (const [dx, dy] of CARDINAL_DIRS) {
+    const nx = monster.x + dx;
+    const ny = monster.y + dy;
+    if (!canStep(map, monster.x, monster.y, nx, ny, occupied)) continue;
+    const dist = manhattan(nx, ny, hero.x, hero.y);
+    if (dist <= 1 || dist > range) continue;
+    if (!hasLineOfSight(map, nx, ny, hero.x, hero.y)) continue;
+
+    const score = dist;
+    if (!best || score > best.score) {
+      best = { x: nx, y: ny, score };
+    }
+  }
+
+  return best;
+}
+
 export function moveMonstersTowardHero(map, hero, monsters) {
   const hunters = monsters
     .filter((m) => m.alive && canMonsterSeeHero(m, hero))
@@ -870,25 +920,69 @@ export function moveMonstersTowardHero(map, hero, monsters) {
   );
 
   for (const monster of hunters) {
+    if ((monster.enragedHasteTurns ?? 0) > 0) {
+      monster.enragedHasteTurns -= 1;
+    }
     if ((monster.slowed ?? 0) > 0) {
-      monster.slowed -= 1;
-      continue;
+      const resistSlow = (monster.isBoss && (monster.enragedHasteTurns ?? 0) > 0) ? 0.6 : 0;
+      if (Math.random() >= resistSlow) {
+        monster.slowed -= 1;
+        continue;
+      }
     }
 
     const cheb = chebyshev(monster.x, monster.y, hero.x, hero.y);
     const manh = manhattan(monster.x, monster.y, hero.x, hero.y);
+    const hpRatio = monster.hp / Math.max(1, monster.maxHp);
+    const lowHpRetreat = !!monster.fragile && hpRatio <= (monster.retreatHpPct ?? 0.3);
+    const preferRanged = !!monster.ranged;
+
+    const blocked = new Set(occupied);
+    blocked.delete(key(monster.x, monster.y));
+
+    if (preferRanged && cheb <= 1) {
+      const retreat = findBestRetreatStep(map, monster, hero, blocked, { preferRanged: true });
+      if (retreat) {
+        occupied.delete(key(monster.x, monster.y));
+        monster.x = retreat.x;
+        monster.y = retreat.y;
+        occupied.add(key(monster.x, monster.y));
+      }
+    }
+
+    if (lowHpRetreat && manh <= 3) {
+      const retreat = findBestRetreatStep(map, monster, hero, blocked, { preferRanged });
+      if (retreat) {
+        occupied.delete(key(monster.x, monster.y));
+        monster.x = retreat.x;
+        monster.y = retreat.y;
+        occupied.add(key(monster.x, monster.y));
+      }
+    }
 
     if (canMonsterAttackHero(map, monster, hero)) {
+      const currentCheb = chebyshev(monster.x, monster.y, hero.x, hero.y);
+      const currentManh = manhattan(monster.x, monster.y, hero.x, hero.y);
       if (monster.ranged && cheb > 1) {
-        return { monster, distance: manh };
+        return { monster, distance: currentManh };
       }
-      if (cheb <= 1) {
+      if (currentCheb <= 1) {
         return { monster, distance: 1 };
       }
     }
 
-    const blocked = new Set(occupied);
-    blocked.delete(key(monster.x, monster.y));
+    if (monster.ranged) {
+      const firingStep = findRangedFiringStep(map, monster, hero, blocked);
+      if (firingStep) {
+        occupied.delete(key(monster.x, monster.y));
+        monster.x = firingStep.x;
+        monster.y = firingStep.y;
+        occupied.add(key(monster.x, monster.y));
+        if (canMonsterAttackHero(map, monster, hero)) {
+          return { monster, distance: manhattan(monster.x, monster.y, hero.x, hero.y) };
+        }
+      }
+    }
 
     const path = findPath(map, monster.x, monster.y, hero.x, hero.y, blocked);
     if (!path?.length) continue;
