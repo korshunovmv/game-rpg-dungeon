@@ -56,9 +56,24 @@ export const TRAP_TYPES = {
 
 const TRAP_IDS = Object.keys(TRAP_TYPES);
 
+function pickWeightedTrapId(weights = null) {
+  if (!weights) return TRAP_IDS[randInt(0, TRAP_IDS.length - 1)];
+  const entries = TRAP_IDS.map((id) => ({ id, w: Math.max(0.01, weights[id] ?? 1) }));
+  const total = entries.reduce((sum, e) => sum + e.w, 0);
+  let roll = Math.random() * total;
+  for (const entry of entries) {
+    roll -= entry.w;
+    if (roll <= 0) return entry.id;
+  }
+  return entries[entries.length - 1].id;
+}
+
 export function spawnTraps(dungeon, floor, occupied = new Set()) {
   const { map, spawn, stairs } = dungeon;
   const tiles = [];
+  const trapFactor = dungeon?.biome?.trapFactor ?? 1;
+  const trapWeights = dungeon?.biome?.trapWeights ?? null;
+  const hiddenTrapBonus = dungeon?.biome?.hiddenTrapBonus ?? 0;
 
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
@@ -71,23 +86,26 @@ export function spawnTraps(dungeon, floor, occupied = new Set()) {
     }
   }
 
-  const count = Math.min(3 + floor, 10, Math.floor(tiles.length / 10));
+  const baseCount = Math.min(3 + floor, 10, Math.floor(tiles.length / 10));
+  const count = Math.max(1, Math.floor(baseCount * trapFactor));
   const pool = shuffle(tiles);
   const traps = [];
 
   for (let i = 0; i < count && pool.length; i++) {
     const pos = pool.pop();
-    const typeId = TRAP_IDS[randInt(0, TRAP_IDS.length - 1)];
+    const typeId = pickWeightedTrapId(trapWeights);
     const type = TRAP_TYPES[typeId];
+    const hiddenChance = Math.min(0.95, Math.max(0.05, (type.hidden ? 1 : 0) + hiddenTrapBonus));
+    const hidden = Math.random() < hiddenChance;
     traps.push({
       id: `t-${i}-${Date.now()}`,
       x: pos.x,
       y: pos.y,
       type: typeId,
-      hidden: type.hidden,
+      hidden,
       triggered: false,
       disarmed: false,
-      revealed: !type.hidden,
+      revealed: !hidden,
     });
   }
 
@@ -143,7 +161,8 @@ export function triggerTrap(trap, hero, map, traps) {
   trap.revealed = true;
 
   const floor = hero.floor;
-  const damage = type.baseDamage + Math.floor(floor * 1.5);
+  const biomeDamageMult = hero?.currentBiome?.trapDamageMult ?? 1;
+  const damage = Math.max(0, Math.floor((type.baseDamage + Math.floor(floor * 1.5)) * biomeDamageMult));
   const result = {
     message: '',
     damage: 0,

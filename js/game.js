@@ -134,6 +134,7 @@ export class Game {
     const dungeon = generateDungeon(floor, seed);
     this.map = dungeon.map;
     this.roomTypeMap = dungeon.roomTypeMap;
+    this.biome = dungeon.biome ?? null;
     this.stairs = dungeon.stairs;
     this.rooms = dungeon.rooms;
 
@@ -152,6 +153,7 @@ export class Game {
     }
 
     this.hero.floor = floor;
+    this.hero.currentBiome = this.biome ?? null;
     this.loadFloorEntities(dungeon, floor);
     this.explored = new Set();
     this.visible = new Set();
@@ -164,6 +166,11 @@ export class Game {
     this.state = 'playing';
     this.revealAroundHero();
     this.ui.log(`Этаж ${floor}.`, 'info');
+    if (this.biome?.name) {
+      this.ui.log(`Биом: ${this.biome.name}`, 'info');
+      const hint = this.getBiomeHint(this.biome);
+      if (hint) this.ui.log(hint, 'info');
+    }
     const roomTypes = [...new Set((this.rooms ?? []).map((room) => room.typeLabel).filter(Boolean))];
     if (roomTypes.length) {
       this.ui.log(`Обнаружены комнаты: ${roomTypes.join(', ')}`, 'info');
@@ -525,6 +532,24 @@ export class Game {
 
   log(msg, type = '') {
     this.ui.log(msg, type);
+  }
+
+  getBiomeHint(biome) {
+    if (!biome?.id) return null;
+    switch (biome.id) {
+      case 'ruins':
+        return 'Руины: нейтральный баланс угроз и наград.';
+      case 'wild':
+        return 'Заросли: больше скрытых/ядовитых ловушек и чаще мимики.';
+      case 'frozen':
+        return 'Склеп: ловушки мягче, но замедление встречается чаще.';
+      case 'inferno':
+        return 'Недра: усиленные огненные ловушки и высокая плотность врагов.';
+      case 'abyssal':
+        return 'Бездна: чаще телепорт-ловушки и опасные сундуки.';
+      default:
+        return null;
+    }
   }
 
   updateBossPhase(monster) {
@@ -1341,11 +1366,13 @@ export class Game {
     const dungeon = generateDungeon(nextFloor, seed);
     this.map = dungeon.map;
     this.roomTypeMap = dungeon.roomTypeMap;
+    this.biome = dungeon.biome ?? null;
     this.stairs = dungeon.stairs;
     this.rooms = dungeon.rooms;
     this.hero.x = dungeon.spawn.x;
     this.hero.y = dungeon.spawn.y;
     this.hero.floor = nextFloor;
+    this.hero.currentBiome = this.biome ?? null;
     this.hero.poison = 0;
     this.hero.slowed = 0;
     this.loadFloorEntities(dungeon, nextFloor);
@@ -1359,6 +1386,11 @@ export class Game {
     const boss = getAliveBoss(this.monsters);
     if (boss) {
       this.log(`БОСС: ${boss.name} охраняет лестницу!`, 'boss');
+    }
+    if (this.biome?.name) {
+      this.log(`Биом: ${this.biome.name}`, 'info');
+      const hint = this.getBiomeHint(this.biome);
+      if (hint) this.log(hint, 'info');
     }
     this.syncStats();
   }
@@ -1381,6 +1413,7 @@ export class Game {
     this.renderer.render({
       map: this.map,
       roomTypeMap: this.roomTypeMap,
+      themeId: this.biome?.themeId ?? null,
       hero: this.hero,
       monsters: this.monsters,
       items: this.items,

@@ -58,7 +58,11 @@ export const DUNGEON_THEMES = [
   },
 ];
 
-export function getDungeonTheme(floor = 1) {
+export function getDungeonTheme(floor = 1, themeId = null) {
+  if (themeId) {
+    const byId = DUNGEON_THEMES.find((theme) => theme.id === themeId);
+    if (byId) return byId;
+  }
   const index = Math.floor((Math.max(1, floor) - 1) / 2) % DUNGEON_THEMES.length;
   return DUNGEON_THEMES[index];
 }

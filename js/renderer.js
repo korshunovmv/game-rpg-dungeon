@@ -817,7 +817,7 @@ export class Renderer {
 
     const camX = hero.x;
     const camY = hero.y;
-    const theme = getDungeonTheme(hero.floor ?? 1);
+    const theme = getDungeonTheme(hero.floor ?? 1, state.themeId ?? null);
 
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {

@@ -130,6 +130,7 @@ export function describeChestLoot(loot) {
 
 export function spawnChests(dungeon, floor, occupied = new Set(), luck = 5) {
   const { rooms, spawn, stairs, map } = dungeon;
+  const mimicChance = dungeon?.biome?.mimicChance ?? MIMIC_CHANCE;
   if (rooms.length < 2) return [];
 
   const candidates = shuffle(
@@ -153,7 +154,7 @@ export function spawnChests(dungeon, floor, occupied = new Set(), luck = 5) {
       if (x === stairs.x && y === stairs.y) continue;
       if (!isWalkable(map, x, y)) continue;
 
-      const isMimic = Math.random() < MIMIC_CHANCE;
+      const isMimic = Math.random() < mimicChance;
       const chest = {
         id: `chest-${chests.length}-${Date.now()}`,
         x,
