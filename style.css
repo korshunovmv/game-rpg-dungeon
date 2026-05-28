@@ -124,6 +124,126 @@ body {
   z-index: 2;
 }
 
+.save-select {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.92);
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 4;
+}
+
+.save-select.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.save-select h2 {
+  font-size: 10px;
+  color: var(--accent);
+  text-align: center;
+}
+
+.save-grid {
+  width: 100%;
+  max-width: 460px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.save-slot {
+  background: var(--panel);
+  border: 3px solid var(--border);
+  color: var(--text);
+  padding: 8px;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 56px;
+}
+
+.save-slot-main {
+  font-family: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.save-slot:hover,
+.save-slot:active,
+.save-slot-main:hover,
+.save-slot-main:active {
+  border-color: var(--accent);
+  background: #252545;
+}
+
+.save-slot-title {
+  font-size: 7px;
+  color: var(--accent);
+}
+
+.save-slot-desc {
+  font-size: 5px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.save-slot-meta {
+  font-size: 5px;
+  color: #88ddff;
+}
+
+.save-slot-status {
+  font-size: 5px;
+  color: #ffcc88;
+}
+
+.save-slot-status.alive {
+  color: #7dff9f;
+}
+
+.save-slot-status.dead {
+  color: #ff8899;
+}
+
+.save-slot-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.save-slot-delete {
+  font-family: inherit;
+  font-size: 5px;
+  line-height: 1.5;
+  border: 2px solid #6b2e3b;
+  background: #3b1c24;
+  color: #ffb5c0;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.save-slot-delete:hover,
+.save-slot-delete:active {
+  border-color: #b04a60;
+  background: #512632;
+}
+
 .class-select.visible {
   opacity: 1;
   pointer-events: auto;
@@ -480,7 +600,7 @@ body {
 
   .controls {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     position: sticky;
     bottom: max(8px, env(safe-area-inset-bottom));
@@ -503,6 +623,7 @@ body {
   }
 
   .class-select,
+  .save-select,
   .skill-select {
     padding: 12px;
     overflow-y: auto;
@@ -567,6 +688,7 @@ body {
   }
 
   .class-select h2,
+  .save-select h2,
   .skill-select h2 {
     font-size: 9px;
   }

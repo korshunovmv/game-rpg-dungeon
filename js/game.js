@@ -78,6 +78,11 @@ export class Game {
     this.lastHeroPos = null;
     this.stuckTicks = 0;
     this.recentPositions = [];
+    this.activeSaveSlot = null;
+  }
+
+  setActiveSaveSlot(slotId) {
+    this.activeSaveSlot = slotId;
   }
 
   start(professionId, gender = 'male') {
@@ -564,6 +569,94 @@ export class Game {
     this.log(`${monster.name} впадает в ярость! (фаза 2)`, 'boss');
     this.renderer.shakeScreen(8);
     this.renderer.addParticle(monster.x, monster.y, monster.color ?? '#ff6644', 45);
+  }
+
+  getSnapshot() {
+    if (!this.hero || !this.map) return null;
+    return {
+      profession: this.profession,
+      gender: this.gender,
+      paused: this.paused,
+      fast: this.fast,
+      speed: this.speed,
+      frame: this.frame,
+      accumulator: this.accumulator,
+      state: this.state,
+      map: this.map,
+      roomTypeMap: this.roomTypeMap,
+      biome: this.biome,
+      stairs: this.stairs,
+      rooms: this.rooms,
+      hero: this.hero,
+      monsters: this.monsters,
+      items: this.items,
+      chests: this.chests,
+      traps: this.traps,
+      healers: this.healers,
+      merchant: this.merchant,
+      minions: this.minions,
+      legendaryFoes: this.legendaryFoes,
+      pendingLegacies: this.pendingLegacies,
+      floorSeeds: this.floorSeeds,
+      lockedFeature: this.lockedFeature,
+      explored: [...(this.explored ?? [])],
+      visible: [...(this.visible ?? [])],
+      currentPath: this.currentPath ?? [],
+      combatFocusId: this.combatFocus?.id ?? null,
+      lastCombatMonsterId: this.lastCombatMonster?.id ?? null,
+      lastHeroPos: this.lastHeroPos ?? null,
+      stuckTicks: this.stuckTicks ?? 0,
+      recentPositions: this.recentPositions ?? [],
+    };
+  }
+
+  loadSnapshot(snapshot) {
+    if (!snapshot?.hero || !snapshot?.map) return false;
+
+    this.profession = snapshot.profession ?? snapshot.hero.profession ?? null;
+    this.gender = snapshot.gender ?? snapshot.hero.gender ?? 'male';
+    this.paused = !!snapshot.paused;
+    this.fast = !!snapshot.fast;
+    this.speed = snapshot.speed ?? (this.fast ? GAME_SPEED.fast : GAME_SPEED.normal);
+    this.frame = snapshot.frame ?? 0;
+    this.accumulator = snapshot.accumulator ?? 0;
+    this.state = snapshot.state ?? 'playing';
+    this.map = snapshot.map;
+    this.roomTypeMap = snapshot.roomTypeMap ?? null;
+    this.biome = snapshot.biome ?? null;
+    this.stairs = snapshot.stairs ?? null;
+    this.rooms = snapshot.rooms ?? [];
+    this.hero = snapshot.hero;
+    this.monsters = snapshot.monsters ?? [];
+    this.items = snapshot.items ?? [];
+    this.chests = snapshot.chests ?? [];
+    this.traps = snapshot.traps ?? [];
+    this.healers = snapshot.healers ?? [];
+    this.merchant = snapshot.merchant ?? null;
+    this.minions = snapshot.minions ?? [];
+    this.legendaryFoes = snapshot.legendaryFoes ?? [];
+    this.pendingLegacies = snapshot.pendingLegacies ?? [];
+    this.floorSeeds = snapshot.floorSeeds ?? {};
+    this.lockedFeature = snapshot.lockedFeature ?? null;
+    this.currentPath = snapshot.currentPath ?? [];
+    this.lastHeroPos = snapshot.lastHeroPos ?? key(this.hero.x, this.hero.y);
+    this.stuckTicks = snapshot.stuckTicks ?? 0;
+    this.recentPositions = snapshot.recentPositions ?? [this.lastHeroPos];
+    this.explored = new Set(snapshot.explored ?? []);
+    this.visible = new Set(snapshot.visible ?? []);
+
+    this.combatFocus = snapshot.combatFocusId
+      ? this.monsters.find((m) => m.id === snapshot.combatFocusId) ?? null
+      : null;
+    this.lastCombatMonster = snapshot.lastCombatMonsterId
+      ? this.monsters.find((m) => m.id === snapshot.lastCombatMonsterId) ?? null
+      : null;
+
+    this.state = 'playing';
+    this.revealAroundHero();
+    this.syncStats();
+    this.ui.hideOverlay();
+    return true;
   }
 
   getCombatProjectile(result, onComplete) {
@@ -1456,7 +1549,17 @@ export class Game {
     this.floorSeeds = {};
     this.lockedFeature = null;
     this.lastCombatMonster = null;
+    this.combatFocus = null;
     this.currentPath = [];
+    this.biome = null;
+    this.roomTypeMap = null;
+    this.stairs = null;
+    this.rooms = [];
+    this.explored = new Set();
+    this.visible = new Set();
+    this.lastHeroPos = null;
+    this.stuckTicks = 0;
+    this.recentPositions = [];
     this.accumulator = 0;
     this.ui.clearLog();
     return true;

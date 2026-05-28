@@ -10,11 +10,78 @@ import { usesMana } from './classes.js';
 import { describeLegacyGift } from './legacy.js';
 import { getItemRarity, getRarityDef } from './rarity.js';
 
+const SAVE_SLOT_COUNT = 3;
+const SAVE_KEY_PREFIX = 'game-save-slot-';
+
+function saveSlotKey(slotId) {
+  return `${SAVE_KEY_PREFIX}${slotId}`;
+}
+
+function readSlot(slotId) {
+  try {
+    const raw = localStorage.getItem(saveSlotKey(slotId));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeSlot(slotId, payload) {
+  try {
+    localStorage.setItem(saveSlotKey(slotId), JSON.stringify(payload));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearSlot(slotId) {
+  try {
+    localStorage.removeItem(saveSlotKey(slotId));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function describeSlot(data) {
+  if (!data?.snapshot?.hero) {
+    return {
+      title: 'Пустая ячейка',
+      desc: 'Нажмите, чтобы начать новую игру',
+      status: null,
+      statusClass: '',
+      meta: '',
+      hasSave: false,
+    };
+  }
+  const hero = data.snapshot.hero;
+  const biome = data.snapshot.biome?.name ?? '—';
+  const alive = hero.alive !== false;
+  const status = alive ? 'Жив' : 'Мёртв';
+  const statusClass = alive ? 'alive' : 'dead';
+  const updated = data.updatedAt ? new Date(data.updatedAt) : null;
+  const updatedText = updated
+    ? `${String(updated.getDate()).padStart(2, '0')}.${String(updated.getMonth() + 1).padStart(2, '0')} ${String(updated.getHours()).padStart(2, '0')}:${String(updated.getMinutes()).padStart(2, '0')}`
+    : 'н/д';
+  return {
+    title: `${hero.name} (${hero.professionName ?? hero.profession})`,
+    desc: `Этаж ${hero.floor}, ур. ${hero.level}, ${hero.gold} зол. • ${biome}`,
+    status,
+    statusClass,
+    meta: `Сохранено: ${updatedText}`,
+    hasSave: true,
+  };
+}
+
 class UI {
   constructor() {
     this.logEl = document.getElementById('log');
     this.overlay = document.getElementById('overlay');
     this.classSelect = document.getElementById('class-select');
+    this.saveSelect = document.getElementById('save-select');
+    this.saveGrid = document.getElementById('save-grid');
     this.heroName = document.getElementById('hero-name');
     this.heroHp = document.getElementById('hero-hp');
     this.heroMana = document.getElementById('hero-mana');
@@ -43,6 +110,7 @@ class UI {
     this.skillSelect = document.getElementById('skill-select');
     this.skillGrid = document.getElementById('skill-grid');
     this.skillPickHandler = null;
+    this.savePickHandler = null;
   }
 
   clearLog() {
@@ -55,6 +123,53 @@ class UI {
 
   hideClassSelect() {
     this.classSelect.classList.remove('visible');
+  }
+
+  showSaveSelect(slots, onPick, onDelete = null) {
+    this.savePickHandler = onPick;
+    this.saveGrid.innerHTML = '';
+    for (const slot of slots) {
+      const wrap = document.createElement('div');
+      wrap.className = 'save-slot';
+      wrap.addEventListener('click', () => {
+        if (this.savePickHandler) this.savePickHandler(slot.slotId);
+      });
+
+      const mainBtn = document.createElement('div');
+      mainBtn.className = 'save-slot-main';
+      const statusClass = slot.statusClass ? `save-slot-status ${slot.statusClass}` : 'save-slot-status';
+      const statusText = slot.status ? `<span class="${statusClass}">Статус: ${slot.status}</span>` : '';
+      mainBtn.innerHTML = `
+        <span class="save-slot-title">Ячейка ${slot.slotId}: ${slot.title}</span>
+        <span class="save-slot-desc">${slot.desc}</span>
+        ${statusText}
+        <span class="save-slot-meta">${slot.meta}</span>
+      `;
+      wrap.appendChild(mainBtn);
+
+      if (slot.hasSave && onDelete) {
+        const actions = document.createElement('div');
+        actions.className = 'save-slot-actions';
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'save-slot-delete';
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          onDelete(slot.slotId);
+        });
+        actions.appendChild(deleteBtn);
+        wrap.appendChild(actions);
+      }
+
+      this.saveGrid.appendChild(wrap);
+    }
+    this.saveSelect.classList.add('visible');
+  }
+
+  hideSaveSelect() {
+    this.saveSelect.classList.remove('visible');
+    this.savePickHandler = null;
   }
 
   log(message, type = '') {
@@ -234,12 +349,61 @@ function main() {
   const ui = new UI();
   const renderer = new Renderer(canvas);
   const game = new Game(renderer, ui);
-
-  ui.showClassSelect();
+  let activeSlot = null;
 
   document.querySelectorAll('.class-preview').forEach((canvas) => {
     drawClassPreview(canvas, canvas.dataset.class);
   });
+
+  function collectSlotDescriptors() {
+    const slots = [];
+    for (let slotId = 1; slotId <= SAVE_SLOT_COUNT; slotId++) {
+      const data = readSlot(slotId);
+      const desc = describeSlot(data);
+      slots.push({ slotId, ...desc, data });
+    }
+    return slots;
+  }
+
+  function saveGameProgress() {
+    if (!activeSlot) return;
+    const snapshot = game.getSnapshot?.();
+    if (!snapshot) return;
+    writeSlot(activeSlot, {
+      version: 1,
+      updatedAt: Date.now(),
+      snapshot,
+    });
+  }
+
+  function openSlotSelect() {
+    ui.hideClassSelect();
+    const refresh = () => {
+      ui.showSaveSelect(collectSlotDescriptors(), (slotId) => {
+        activeSlot = slotId;
+        game.setActiveSaveSlot(slotId);
+        const slot = readSlot(slotId);
+        ui.hideSaveSelect();
+        if (slot?.snapshot && game.loadSnapshot(slot.snapshot)) {
+          ui.log(`Загружена ячейка ${slotId}`, 'info');
+          document.getElementById('btn-pause').textContent = '⏸ Пауза';
+          saveGameProgress();
+          return;
+        }
+        ui.showClassSelect();
+      }, (slotId) => {
+        clearSlot(slotId);
+        if (activeSlot === slotId) {
+          activeSlot = null;
+          game.setActiveSaveSlot(null);
+        }
+        refresh();
+      });
+    };
+    refresh();
+  }
+
+  openSlotSelect();
 
   document.querySelectorAll('.class-card').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -249,6 +413,7 @@ function main() {
       ui.hideClassSelect();
       game.start(profession, gender);
       document.getElementById('btn-pause').textContent = '⏸ Пауза';
+      saveGameProgress();
     });
   });
 
@@ -268,7 +433,15 @@ function main() {
     game.restart();
     ui.hideOverlay();
     ui.hideSkillSelect();
-    ui.showClassSelect();
+    openSlotSelect();
+    document.getElementById('btn-pause').textContent = '⏸ Пауза';
+  });
+
+  document.getElementById('btn-home').addEventListener('click', () => {
+    game.restart();
+    ui.hideOverlay();
+    ui.hideSkillSelect();
+    openSlotSelect();
     document.getElementById('btn-pause').textContent = '⏸ Пауза';
   });
 
@@ -278,6 +451,7 @@ function main() {
     const dt = now - last;
     last = now;
     game.update(dt);
+    saveGameProgress();
     game.render();
     requestAnimationFrame(loop);
   }
