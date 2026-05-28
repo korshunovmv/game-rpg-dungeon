@@ -165,6 +165,32 @@ export class Renderer {
         ctx.fillStyle = '#dd99ff55';
         ctx.fillRect(cx - 3, cy - 3, 6, 6);
         break;
+      case 'blizzard':
+        ctx.fillStyle = p.color ?? '#9fe8ff';
+        ctx.fillRect(cx - 3, cy - 3, 6, 6);
+        ctx.fillStyle = '#e6fbff';
+        ctx.fillRect(cx - 1, cy - 4, 2, 8);
+        ctx.fillRect(cx - 4, cy - 1, 8, 2);
+        break;
+      case 'meteor':
+        ctx.fillStyle = p.color ?? '#ff7844';
+        ctx.fillRect(cx - 3, cy - 3, 6, 6);
+        ctx.fillStyle = '#ffcc66';
+        ctx.fillRect(cx - 1, cy - 1, 2, 2);
+        ctx.fillStyle = '#ff884466';
+        ctx.fillRect(cx - dx * 2, cy - dy * 2, 3, 3);
+        break;
+      case 'weaken':
+        this.drawOrb(ctx, cx, cy, p.color ?? '#b58cff', 4);
+        ctx.fillStyle = '#e5d0ff88';
+        ctx.fillRect(cx - 4, cy - 1, 8, 2);
+        break;
+      case 'haste':
+        this.drawOrb(ctx, cx, cy, p.color ?? '#66ffd6', 3);
+        ctx.fillStyle = '#b8fff1';
+        ctx.fillRect(cx - 2, cy - 2, 1, 1);
+        ctx.fillRect(cx + 1, cy + 1, 1, 1);
+        break;
       case 'deathBolt':
         ctx.fillStyle = p.color ?? '#88ff66';
         this.drawArrow(ctx, cx, cy, dx, dy, '#88ff66');

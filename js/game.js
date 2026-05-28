@@ -19,6 +19,7 @@ import {
   tryRaiseSkeleton,
   getMaxMinions,
   countAliveMinions,
+  tickNecroEffects,
 } from './necromancy.js';
 import {
   growSkillOnLevelUp,
@@ -44,6 +45,7 @@ import {
 } from './legacy.js';
 import { monsterSnipeRound } from './monsters.js';
 import { openChestLoot, describeChestLoot } from './chests.js';
+import { tickMageEffects } from './magic.js';
 
 export class Game {
   constructor(renderer, ui) {
@@ -593,6 +595,17 @@ export class Game {
     if (this.paused || this.state !== 'playing') return;
 
     this.frame += 1;
+    const mageEffects = tickMageEffects(this.hero) ?? [];
+    for (const effect of mageEffects) {
+      if (effect.expired === 'haste') this.log('Эффект "Ускорение" рассеялся', 'info');
+      if (effect.expired === 'prismWard') this.log('Призматический барьер угас', 'info');
+      if (effect.expired === 'mirrorSkin') this.log('Зеркальная кожа рассеялась', 'info');
+    }
+    const necroEffects = tickNecroEffects(this.hero) ?? [];
+    for (const effect of necroEffects) {
+      if (effect.expired === 'shadowVeil') this.log('Покров теней рассеялся', 'info');
+      if (effect.expired === 'soulWard') this.log('Духовный заслон исчез', 'info');
+    }
     const expiredBuffs = tickHeroBuffs(this.hero);
     for (const buff of expiredBuffs) {
       this.log(`Эффект спал: ${buff.name} (−${buff.amount} ${buff.statLabel})`, 'info');
@@ -1011,6 +1024,27 @@ export class Game {
 
     if (result.drained > 0) {
       this.log(`Поглощено: +${result.drained} HP`, 'info');
+    }
+    if (result.hasted) {
+      this.log('Ускорение: шанс уклонения повышен!', 'info');
+    }
+    if (result.prismWard) {
+      this.log('Призматический барьер активирован!', 'info');
+    }
+    if (result.mirrorSkin) {
+      this.log('Зеркальная кожа: урон отражается во врага', 'info');
+    }
+    if (result.reflected > 0) {
+      this.log(`Отражение: ${monster.name} получает ${result.reflected} урона`, 'combat');
+    }
+    if (result.veiled) {
+      this.log('Покров теней: шанс уклонения повышен!', 'info');
+    }
+    if (result.soulWarded) {
+      this.log('Духовный заслон создан!', 'info');
+    }
+    if (result.weakened) {
+      this.log(`${monster.name} ослаблен! ATK снижен`, 'combat');
     }
     if (result.cursed) {
       this.log(`${monster.name} проклят! ATK снижен`, 'combat');

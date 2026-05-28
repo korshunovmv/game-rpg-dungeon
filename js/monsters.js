@@ -112,7 +112,10 @@ export function calcMonsterDamage(monster, hero) {
   if (!canMonsterHitHero(monster, hero)) return 0;
 
   const def = getTotalDef(hero) + (hero.magicShield ?? 0);
-  const atk = Math.max(1, (monster.atk ?? 2) - (monster.curseAtkRed ?? 0));
+  const atk = Math.max(
+    1,
+    (monster.atk ?? 2) - (monster.curseAtkRed ?? 0) - (monster.weakenAtkRed ?? 0)
+  );
   const inMelee = isMeleeAdjacent(monster.x, monster.y, hero.x, hero.y);
 
   if (inMelee) {
@@ -153,6 +156,8 @@ export function createMonster(floor, pos, index) {
     attackRange: type.attackRange ?? 1,
     projectileKind: type.projectileKind ?? 'arrow',
     projectileColor: type.projectileColor ?? '#cc8888',
+    weakened: 0,
+    weakenAtkRed: 0,
   };
 }
 

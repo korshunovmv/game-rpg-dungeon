@@ -64,6 +64,25 @@ export const NECRO_SPELLS = {
     defBonus: 4,
     manaCost: 5,
   },
+  shadowVeil: {
+    id: 'shadowVeil',
+    name: 'Покров теней',
+    color: '#5f78d8',
+    range: 0,
+    dodgeBonus: 0.18,
+    turns: 4,
+    manaCost: 6,
+  },
+  soulWard: {
+    id: 'soulWard',
+    name: 'Духовный заслон',
+    color: '#7fd4ff',
+    range: 0,
+    absorbPct: 0.35,
+    absorbFlat: 4,
+    turns: 3,
+    manaCost: 7,
+  },
 };
 
 export function getNecromancerAttackRange() {
@@ -87,6 +106,14 @@ function chooseNecroSpell(hero, monster, monsters, distance) {
 
   if (hpPct < 0.4 && distance <= 1) {
     return NECRO_SPELLS.boneArmor;
+  }
+
+  if (!hero.necroSoulWard && hpPct < 0.5) {
+    return NECRO_SPELLS.soulWard;
+  }
+
+  if (!hero.necroVeilTurns && hpPct < 0.68 && monster.atk >= 4) {
+    return NECRO_SPELLS.shadowVeil;
   }
 
   if (hpPct < 0.5 && distance <= NECRO_SPELLS.drain.range) {
@@ -132,6 +159,8 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
     shielded: false,
     cursed: false,
     plagued: false,
+    veiled: false,
+    soulWarded: false,
   };
 
   hero.magicShield = 0;
@@ -154,6 +183,39 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
     result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.5) + randInt(0, 2));
     monster.hp -= result.heroDmg;
     result.monsterDmg = applyCounter(hero, monster);
+    hero.hp -= result.monsterDmg;
+    result.monsterDead = monster.hp <= 0;
+    result.heroDead = hero.hp <= 0;
+    return result;
+  }
+
+  if (spell.id === 'shadowVeil') {
+    const prev = hero.necroVeilDodge ?? 0;
+    if (prev > 0) {
+      hero.dodgeBonus = Math.max(0, (hero.dodgeBonus ?? 0) - prev);
+    }
+    hero.necroVeilDodge = spell.dodgeBonus ?? 0.18;
+    hero.necroVeilTurns = spell.turns ?? 4;
+    hero.dodgeBonus = (hero.dodgeBonus ?? 0) + hero.necroVeilDodge;
+    result.veiled = true;
+    result.monsterDmg = applyCounter(hero, monster);
+    hero.hp -= result.monsterDmg;
+    result.monsterDead = monster.hp <= 0;
+    result.heroDead = hero.hp <= 0;
+    return result;
+  }
+
+  if (spell.id === 'soulWard') {
+    hero.necroSoulWard = Math.floor(hero.maxHp * (spell.absorbPct ?? 0.35)) + (spell.absorbFlat ?? 4);
+    hero.necroSoulWardTurns = spell.turns ?? 3;
+    result.soulWarded = true;
+    result.monsterDmg = applyCounter(hero, monster);
+    if (result.monsterDmg > 0) {
+      const absorbed = Math.min(hero.necroSoulWard, result.monsterDmg);
+      hero.necroSoulWard -= absorbed;
+      result.monsterDmg -= absorbed;
+      if (hero.necroSoulWard <= 0) hero.necroSoulWardTurns = 0;
+    }
     hero.hp -= result.monsterDmg;
     result.monsterDead = monster.hp <= 0;
     result.heroDead = hero.hp <= 0;
@@ -198,6 +260,33 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
   return result;
 }
 
+export function tickNecroEffects(hero) {
+  if (!hero) return null;
+  const events = [];
+
+  if (hero.necroVeilTurns > 0) {
+    hero.necroVeilTurns -= 1;
+    if (hero.necroVeilTurns <= 0) {
+      const dodge = hero.necroVeilDodge ?? 0;
+      if (dodge > 0) {
+        hero.dodgeBonus = Math.max(0, (hero.dodgeBonus ?? 0) - dodge);
+      }
+      hero.necroVeilDodge = 0;
+      events.push({ expired: 'shadowVeil' });
+    }
+  }
+
+  if (hero.necroSoulWardTurns > 0) {
+    hero.necroSoulWardTurns -= 1;
+    if (hero.necroSoulWardTurns <= 0) {
+      hero.necroSoulWard = 0;
+      events.push({ expired: 'soulWard' });
+    }
+  }
+
+  return events.length ? events : null;
+}
+
 export function tickMonsterDecay(monsters) {
   const hits = [];
   for (const m of monsters) {
@@ -216,6 +305,11 @@ export function tickMonsterCurses(monsters) {
     if (!m.alive || !m.cursed || m.cursed <= 0) continue;
     m.cursed -= 1;
     if (m.cursed <= 0) m.curseAtkRed = 0;
+  }
+  for (const m of monsters) {
+    if (!m.alive || !m.weakened || m.weakened <= 0) continue;
+    m.weakened -= 1;
+    if (m.weakened <= 0) m.weakenAtkRed = 0;
   }
 }
 
