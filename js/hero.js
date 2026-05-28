@@ -67,6 +67,9 @@ export function createHero(spawn, professionId = 'warrior', gender = 'male') {
     animFrame: 0,
     skills: {},
     activeBuffs: [],
+    guardStreak: 0,
+    guardDefBonus: 0,
+    guardBuffs: [],
   };
   initHeroSkills(hero);
   if (professionId === 'mage' || professionId === 'necromancer') {
@@ -117,6 +120,9 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
   const fightDist = heroRange <= 1
     ? chebyshev(hero.x, hero.y, monster.x, monster.y)
     : distance;
+  const isArcher = hero.profession === 'archer';
+  const focusShot = isArcher && fightDist >= 2;
+  const meleePenalty = isArcher && fightDist <= 1;
   let heroDmg = 0;
   let crit = false;
 
@@ -126,7 +132,16 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
       heroDmg += prof.magicBonus + randInt(0, 2);
     }
 
-    crit = rollLuck(hero, 0.04 + luckCritBonus(hero));
+    let critChance = 0.04 + luckCritBonus(hero);
+    if (focusShot) {
+      heroDmg = Math.max(1, Math.floor(heroDmg * 1.2) + 1);
+      critChance += 0.06;
+    } else if (meleePenalty) {
+      heroDmg = Math.max(1, Math.floor(heroDmg * 0.8));
+      critChance = Math.max(0.01, critChance - 0.03);
+    }
+
+    crit = rollLuck(hero, critChance);
     if (crit) heroDmg = Math.floor(heroDmg * 1.5);
     monster.hp -= heroDmg;
   }
@@ -144,6 +159,8 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
     attackLabel: prof.attackLabel,
     ranged: heroRange > 1 && fightDist > 1,
     crit,
+    focusShot,
+    meleePenalty,
   };
 }
 

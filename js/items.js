@@ -389,7 +389,7 @@ export function getTotalAtk(hero) {
 }
 
 export function getTotalDef(hero) {
-  return hero.def + (hero.armor?.def ?? 0) + (hero.bonusDef ?? 0);
+  return hero.def + (hero.armor?.def ?? 0) + (hero.bonusDef ?? 0) + (hero.guardDefBonus ?? 0);
 }
 
 export function recalcMaxHp(hero) {

@@ -3,12 +3,8 @@ import { isWalkable } from './dungeon.js';
 import { getProfession } from './classes.js';
 import { getLuck, rollLuck } from './luck.js';
 import { calcMonsterDamage, canMonsterHitHero } from './monsters.js';
-import { ensureHeroMana } from './items.js';
+import { ensureHeroMana, getTotalAtk } from './items.js';
 import { getIntelligenceSpellBonus } from './attributes.js';
-
-function getTotalAtk(hero) {
-  return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0) + getIntelligenceSpellBonus(hero);
-}
 
 function getTotalDef(hero) {
   return hero.def + (hero.armor?.def ?? 0);
@@ -167,7 +163,8 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
 
   const manaCost = spell.manaCost ?? 0;
   if (manaCost && !ensureHeroMana(hero, manaCost)) {
-    result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.35) + randInt(0, 1));
+    const atkBase = getTotalAtk(hero) + getIntelligenceSpellBonus(hero);
+    result.heroDmg = Math.max(1, Math.floor(atkBase * 0.35) + randInt(0, 1));
     monster.hp -= result.heroDmg;
     result.attackLabel = 'Посох';
     result.monsterDmg = applyCounter(hero, monster);
@@ -180,7 +177,8 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
   if (spell.id === 'boneArmor') {
     hero.magicShield = spell.defBonus;
     result.shielded = true;
-    result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.5) + randInt(0, 2));
+    const atkBase = getTotalAtk(hero) + getIntelligenceSpellBonus(hero);
+    result.heroDmg = Math.max(1, Math.floor(atkBase * 0.5) + randInt(0, 2));
     monster.hp -= result.heroDmg;
     result.monsterDmg = applyCounter(hero, monster);
     hero.hp -= result.monsterDmg;
@@ -222,9 +220,10 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
     return result;
   }
 
+  const atkBase = getTotalAtk(hero) + getIntelligenceSpellBonus(hero);
   result.heroDmg = Math.max(
     1,
-    Math.floor(getTotalAtk(hero) * spell.mult) + spell.bonus + randInt(-1, 2)
+    Math.floor(atkBase * spell.mult) + spell.bonus + randInt(-1, 2)
   );
   monster.hp -= result.heroDmg;
 

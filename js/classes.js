@@ -53,7 +53,7 @@ export const PROFESSIONS = {
     atk: 9,
     def: 0,
     vision: 6,
-    attackRange: 2,
+    attackRange: 4,
     attackLabel: 'Магия',
     magicBonus: 3,
     luck: 6,
@@ -126,8 +126,6 @@ export function getProfession(id) {
 }
 
 export function getAttackRange(hero) {
-  if (hero.profession === 'mage') return 4;
-  if (hero.profession === 'necromancer') return 3;
   return getProfession(hero.profession).attackRange;
 }
 

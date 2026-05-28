@@ -622,6 +622,14 @@ export class Game {
       stuckTicks: this.stuckTicks ?? 0,
       recentPositions: this.recentPositions ?? [],
       intentMemory: this.intentMemory ?? null,
+      warriorGuard: this.hero
+        ? {
+          streak: this.hero.guardStreak ?? 0,
+          defBonus: this.hero.guardDefBonus ?? 0,
+          buffs: this.hero.guardBuffs ?? [],
+          lastGainFrame: this.hero.guardLastGainFrame ?? -9999,
+        }
+        : null,
     };
   }
 
@@ -642,6 +650,17 @@ export class Game {
     this.stairs = snapshot.stairs ?? null;
     this.rooms = snapshot.rooms ?? [];
     this.hero = snapshot.hero;
+    if (snapshot.warriorGuard) {
+      this.hero.guardStreak = snapshot.warriorGuard.streak ?? 0;
+      this.hero.guardDefBonus = snapshot.warriorGuard.defBonus ?? 0;
+      this.hero.guardBuffs = snapshot.warriorGuard.buffs ?? [];
+      this.hero.guardLastGainFrame = snapshot.warriorGuard.lastGainFrame ?? -9999;
+    } else {
+      this.hero.guardStreak = this.hero.guardStreak ?? 0;
+      this.hero.guardDefBonus = this.hero.guardDefBonus ?? 0;
+      this.hero.guardBuffs = this.hero.guardBuffs ?? [];
+      this.hero.guardLastGainFrame = this.hero.guardLastGainFrame ?? -9999;
+    }
     this.monsters = snapshot.monsters ?? [];
     this.items = snapshot.items ?? [];
     this.chests = snapshot.chests ?? [];
@@ -801,6 +820,56 @@ export class Game {
     }
     this.clearIntentMemory();
     return action;
+  }
+
+  ensureWarriorGuardState() {
+    if (!this.hero) return;
+    if (!Array.isArray(this.hero.guardBuffs)) this.hero.guardBuffs = [];
+    if (typeof this.hero.guardDefBonus !== 'number') this.hero.guardDefBonus = 0;
+    if (typeof this.hero.guardStreak !== 'number') this.hero.guardStreak = 0;
+    if (typeof this.hero.guardLastGainFrame !== 'number') this.hero.guardLastGainFrame = -9999;
+  }
+
+  tickWarriorGuard() {
+    if (!this.hero || this.hero.profession !== 'warrior') return;
+    this.ensureWarriorGuardState();
+    if (!this.hero.guardBuffs.length) {
+      this.hero.guardDefBonus = 0;
+      return;
+    }
+    for (const buff of this.hero.guardBuffs) {
+      buff.turns -= 1;
+    }
+    this.hero.guardBuffs = this.hero.guardBuffs.filter((buff) => buff.turns > 0);
+    this.hero.guardDefBonus = this.hero.guardBuffs.length;
+    if (this.hero.guardDefBonus === 0) {
+      this.hero.guardStreak = 0;
+    }
+  }
+
+  applyWarriorGuardFromMelee() {
+    if (!this.hero || this.hero.profession !== 'warrior') return;
+    this.ensureWarriorGuardState();
+    if (this.hero.guardLastGainFrame === this.frame) return;
+
+    const GUARD_STACK_CAP = 4;
+    const STREAK_WINDOW = this.frame - this.hero.guardLastGainFrame === 1;
+    this.hero.guardStreak = STREAK_WINDOW
+      ? Math.min(GUARD_STACK_CAP, this.hero.guardStreak + 1)
+      : 1;
+    this.hero.guardLastGainFrame = this.frame;
+
+    if (this.hero.guardBuffs.length < GUARD_STACK_CAP) {
+      this.hero.guardBuffs.push({ turns: 2 + Math.floor(Math.random() * 2) });
+    } else {
+      const shortestIdx = this.hero.guardBuffs.reduce(
+        (bestIdx, buff, idx, arr) => (buff.turns < arr[bestIdx].turns ? idx : bestIdx),
+        0
+      );
+      this.hero.guardBuffs[shortestIdx].turns = 2 + Math.floor(Math.random() * 2);
+    }
+
+    this.hero.guardDefBonus = this.hero.guardBuffs.length;
   }
 
   tryUseSpellScrolls() {
@@ -964,6 +1033,7 @@ export class Game {
       if (effect.expired === 'shadowVeil') this.log('Покров теней рассеялся', 'info');
       if (effect.expired === 'soulWard') this.log('Духовный заслон исчез', 'info');
     }
+    this.tickWarriorGuard();
     const expiredBuffs = tickHeroBuffs(this.hero);
     for (const buff of expiredBuffs) {
       this.log(`Эффект спал: ${buff.name} (−${buff.amount} ${buff.statLabel})`, 'info');
@@ -1387,7 +1457,8 @@ export class Game {
     } else if (result.heroDmg > 0) {
       const rangeNote = result.ranged ? ' (дист.)' : '';
       const critNote = result.crit ? ' Крит!' : '';
-      this.log(`${result.attackLabel}${rangeNote} по ${monster.name}: −${result.heroDmg} HP${critNote}`, 'combat');
+      const stanceNote = result.focusShot ? ' [Focus]' : result.meleePenalty ? ' [вплотную]' : '';
+      this.log(`${result.attackLabel}${rangeNote}${stanceNote} по ${monster.name}: −${result.heroDmg} HP${critNote}`, 'combat');
       this.updateBossPhase(monster);
     }
 
@@ -1447,6 +1518,12 @@ export class Game {
         ? ' (дист.)'
         : '';
       this.log(`${monster.name} бьёт${shotNote}: −${result.monsterDmg} HP`, 'combat');
+    }
+
+    const meleeExchange = isMeleeAdjacent(monster.x, monster.y, this.hero.x, this.hero.y)
+      && (result.heroDmg > 0 || result.monsterDmg > 0);
+    if (meleeExchange) {
+      this.applyWarriorGuardFromMelee();
     }
 
     if (this.hero.hp <= 0) {

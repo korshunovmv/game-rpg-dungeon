@@ -1,11 +1,7 @@
 import { randInt, manhattan } from './utils.js';
 import { calcMonsterDamage, canMonsterHitHero } from './monsters.js';
-import { ensureHeroMana } from './items.js';
+import { ensureHeroMana, getTotalAtk } from './items.js';
 import { getIntelligenceSpellBonus } from './attributes.js';
-
-function getTotalAtk(hero) {
-  return hero.atk + (hero.weapon?.atk ?? 0) + (hero.armor?.atk ?? 0) + getIntelligenceSpellBonus(hero);
-}
 
 function getTotalDef(hero) {
   return hero.def + (hero.armor?.def ?? 0);
@@ -195,7 +191,8 @@ export function chooseSpell(hero, monster, monsters, distance) {
 }
 
 function calcSpellDamage(hero, spell, monster) {
-  let dmg = Math.max(1, Math.floor(getTotalAtk(hero) * spell.mult) + spell.bonus + randInt(-1, 2));
+  const atkBase = getTotalAtk(hero) + getIntelligenceSpellBonus(hero);
+  let dmg = Math.max(1, Math.floor(atkBase * spell.mult) + spell.bonus + randInt(-1, 2));
 
   if (spell.executeBelow && monster.hp / monster.maxHp <= spell.executeBelow) {
     dmg = Math.floor(dmg * spell.executeMult);
@@ -280,7 +277,8 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
 
   const manaCost = spell.manaCost ?? 0;
   if (manaCost && !ensureHeroMana(hero, manaCost)) {
-    result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.35) + randInt(0, 1));
+    const atkBase = getTotalAtk(hero) + getIntelligenceSpellBonus(hero);
+    result.heroDmg = Math.max(1, Math.floor(atkBase * 0.35) + randInt(0, 1));
     monster.hp -= result.heroDmg;
     result.attackLabel = 'Посох';
     result.monsterDmg = applyMonsterCounter(hero, monster);
@@ -303,7 +301,8 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
   if (spell.id === 'shield') {
     hero.magicShield = spell.defBonus;
     result.shielded = true;
-    result.heroDmg = Math.max(1, Math.floor(getTotalAtk(hero) * 0.4) + randInt(0, 2));
+    const atkBase = getTotalAtk(hero) + getIntelligenceSpellBonus(hero);
+    result.heroDmg = Math.max(1, Math.floor(atkBase * 0.4) + randInt(0, 2));
     monster.hp -= result.heroDmg;
     result.monsterDmg = applyMonsterCounter(hero, monster);
     hero.hp -= result.monsterDmg;
