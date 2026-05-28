@@ -852,7 +852,7 @@ export class Game {
     this.ensureWarriorGuardState();
     if (this.hero.guardLastGainFrame === this.frame) return;
 
-    const GUARD_STACK_CAP = 4;
+    const GUARD_STACK_CAP = 3;
     const STREAK_WINDOW = this.frame - this.hero.guardLastGainFrame === 1;
     this.hero.guardStreak = STREAK_WINDOW
       ? Math.min(GUARD_STACK_CAP, this.hero.guardStreak + 1)
