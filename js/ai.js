@@ -568,6 +568,33 @@ function findHealerPath(map, hx, hy, healers, blocked) {
   return null;
 }
 
+function addJitter(score, jitter = 0.2) {
+  const spread = (Math.random() * 2 - 1) * jitter;
+  return score + spread;
+}
+
+function chooseHumanLike(entries, scoreFn, options = {}) {
+  const { top = 3, jitter = 0.2 } = options;
+  if (!entries.length) return null;
+
+  const scored = entries
+    .map((entry) => ({ entry, score: addJitter(scoreFn(entry), jitter) }))
+    .sort((a, b) => b.score - a.score);
+
+  const poolSize = Math.max(1, Math.min(top, scored.length));
+  const pool = scored.slice(0, poolSize);
+  const weights = pool.map((_, idx) => Math.pow(poolSize - idx, 1.25));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+
+  let roll = Math.random() * total;
+  for (let i = 0; i < pool.length; i += 1) {
+    roll -= weights[i];
+    if (roll <= 0) return pool[i].entry;
+  }
+
+  return pool[0].entry;
+}
+
 export function getExplorationTarget(
   map,
   hero,
@@ -607,7 +634,12 @@ export function getExplorationTarget(
   const avoidGreed = highDanger || panicMode;
 
   const boss = getAliveBoss(monsters);
-  if (!panicMode && boss && isMonsterKnown(boss, explored, visible, hero)) {
+  if (
+    !panicMode
+    && boss
+    && isMonsterKnown(boss, explored, visible, hero)
+    && (!needHeal || hpRatio >= 0.58 || !highDanger)
+  ) {
     const bossDist = manhattan(hx, hy, boss.x, boss.y);
     if (canAttackTarget(map, hx, hy, boss.x, boss.y, attackRange)) {
       return { type: 'fight', target: boss, distance: bossDist };
@@ -642,11 +674,27 @@ export function getExplorationTarget(
     }
   }
 
-  const targetMonster = monsters
+  if (!panicMode && immediateThreat && hpRatio < 0.62) {
+    const retreatFrom = knownMonsters[0]?.monster ?? null;
+    const retreatPath = findExplorationPath(map, hx, hy, explored, blocked, retreatFrom);
+    if (retreatPath?.path.length && Math.random() < 0.35) {
+      return { type: 'explore', path: retreatPath.path, goal: retreatPath.goal };
+    }
+  }
+
+  const targetMonster = chooseHumanLike(monsters
     .filter((m) => m.alive && isMonsterKnown(m, explored, visible, hero)
       && canAttackTarget(map, hx, hy, m.x, m.y, attackRange))
-    .map((m) => ({ monster: m, dist: getHeroFightDistance(hero, m) }))
-    .sort((a, b) => a.dist - b.dist)[0];
+    .map((m) => {
+      const dist = getHeroFightDistance(hero, m);
+      const hpLeft = m.hp / Math.max(1, m.maxHp);
+      const focusBonus = focusMonster?.id === m.id ? 1.4 : 0;
+      const finisherBonus = m.hp <= Math.max(2, (hero.atk ?? 1) * 0.75) ? 1.1 : 0;
+      const threatBonus = (m.atk ?? 2) * 0.12;
+      const score = (2.6 - dist * 0.35) + (1 - hpLeft) * 1.4 + focusBonus + finisherBonus + threatBonus;
+      return { monster: m, dist, score };
+    }),
+  (entry) => entry.score, { top: 3, jitter: 0.22 });
 
   if (targetMonster && !panicMode) {
     return {
@@ -754,10 +802,11 @@ export function getExplorationTarget(
   }
 
   const unopenedChests = chests.filter((c) => isUnopenedChest(c));
-  const nearChest = unopenedChests
+  const nearChest = chooseHumanLike(unopenedChests
     .map((c) => ({ chest: c, dist: manhattan(hx, hy, c.x, c.y), score: chestPriority(c, hero) }))
     .filter((e) => e.dist <= lootRange)
-    .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];
+    .map((e) => ({ ...e, finalScore: e.score - e.dist * 0.22 })),
+  (entry) => entry.finalScore, { top: 3, jitter: 0.18 });
 
   if (nearChest && !avoidGreed) {
     if (nearChest.dist === 0) {
@@ -786,11 +835,12 @@ export function getExplorationTarget(
     }
   }
 
-  const nearItem = items
+  const nearItem = chooseHumanLike(items
     .filter((i) => !i.collected && (!avoidGreed || isCollectibleWhileLowHp(i)))
     .map((i) => ({ item: i, dist: manhattan(hx, hy, i.x, i.y), score: itemPriority(i, hero) }))
     .filter((e) => e.dist <= lootRange)
-    .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];
+    .map((e) => ({ ...e, finalScore: e.score - e.dist * 0.25 })),
+  (entry) => entry.finalScore, { top: 3, jitter: 0.2 });
 
   if (nearItem) {
     const path = findPath(map, hx, hy, nearItem.item.x, nearItem.item.y, blocked);

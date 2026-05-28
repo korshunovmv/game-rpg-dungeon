@@ -1,7 +1,7 @@
 import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
-import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, wanderIdleMonsters, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep, findUnstickStep, getHeroBlockedSet } from './ai.js';
+import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, wanderIdleMonsters, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep, findUnstickStep, getHeroBlockedSet, findPath } from './ai.js';
 import { key, isMeleeAdjacent, chebyshev, manhattan } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
@@ -49,6 +49,18 @@ import { openChestLoot, describeChestLoot } from './chests.js';
 import { tickMageEffects } from './magic.js';
 
 export class Game {
+  static PATH_ACTIONS = new Set([
+    'room-loot',
+    'disarm-move',
+    'heal-move',
+    'merchant-move',
+    'chest-move',
+    'chase',
+    'move',
+    'explore',
+    'stairs',
+  ]);
+
   constructor(renderer, ui) {
     this.renderer = renderer;
     this.ui = ui;
@@ -78,6 +90,7 @@ export class Game {
     this.lastHeroPos = null;
     this.stuckTicks = 0;
     this.recentPositions = [];
+    this.intentMemory = null;
     this.activeSaveSlot = null;
   }
 
@@ -167,6 +180,7 @@ export class Game {
     this.lastHeroPos = key(this.hero.x, this.hero.y);
     this.stuckTicks = 0;
     this.recentPositions = [this.lastHeroPos];
+    this.intentMemory = null;
     this.accumulator = 0;
     this.state = 'playing';
     this.revealAroundHero();
@@ -607,6 +621,7 @@ export class Game {
       lastHeroPos: this.lastHeroPos ?? null,
       stuckTicks: this.stuckTicks ?? 0,
       recentPositions: this.recentPositions ?? [],
+      intentMemory: this.intentMemory ?? null,
     };
   }
 
@@ -642,6 +657,7 @@ export class Game {
     this.lastHeroPos = snapshot.lastHeroPos ?? key(this.hero.x, this.hero.y);
     this.stuckTicks = snapshot.stuckTicks ?? 0;
     this.recentPositions = snapshot.recentPositions ?? [this.lastHeroPos];
+    this.intentMemory = snapshot.intentMemory ?? null;
     this.explored = new Set(snapshot.explored ?? []);
     this.visible = new Set(snapshot.visible ?? []);
 
@@ -715,6 +731,76 @@ export class Game {
       .filter((m) => m.alive && this.visible.has(key(m.x, m.y)))
       .map((m) => ({ monster: m, dist: manhattan(this.hero.x, this.hero.y, m.x, m.y) }))
       .sort((a, b) => a.dist - b.dist)[0]?.monster ?? null;
+  }
+
+  hasImmediateThreat() {
+    return this.monsters.some(
+      (m) => m.alive && (isMeleeAdjacent(m.x, m.y, this.hero.x, this.hero.y)
+        || canMonsterAttackHero(this.map, m, this.hero))
+    );
+  }
+
+  clearIntentMemory() {
+    this.intentMemory = null;
+  }
+
+  rememberIntent(action) {
+    if (!action || !Game.PATH_ACTIONS.has(action.type)) {
+      this.clearIntentMemory();
+      return;
+    }
+    const goal = action.goal && action.goal.x != null && action.goal.y != null
+      ? { x: action.goal.x, y: action.goal.y, id: action.goal.id ?? null }
+      : null;
+    this.intentMemory = {
+      type: action.type,
+      goal,
+      ticksLeft: 2 + Math.floor(Math.random() * 2),
+    };
+  }
+
+  resolveIntentGoal(memory) {
+    if (!memory?.goal) return null;
+    if (memory.goal.id != null) {
+      const monster = this.monsters.find((m) => m.alive && m.id === memory.goal.id);
+      if (!monster) return null;
+      return { x: monster.x, y: monster.y, id: monster.id };
+    }
+    return { x: memory.goal.x, y: memory.goal.y, id: memory.goal.id ?? null };
+  }
+
+  applyIntentMemory(action) {
+    const memory = this.intentMemory;
+    if (!memory?.ticksLeft || memory.ticksLeft <= 0) {
+      this.clearIntentMemory();
+      return action;
+    }
+    if (this.hasImmediateThreat()) {
+      this.clearIntentMemory();
+      return action;
+    }
+    if (!Game.PATH_ACTIONS.has(memory.type)) {
+      this.clearIntentMemory();
+      return action;
+    }
+
+    memory.ticksLeft -= 1;
+    const goal = this.resolveIntentGoal(memory);
+    if (!goal) {
+      this.clearIntentMemory();
+      return action;
+    }
+
+    const blocked = getHeroBlockedSet(this.hero, this.monsters, this.minions, {
+      blockMinions: false,
+    });
+    blocked.delete(key(this.hero.x, this.hero.y));
+    const path = findPath(this.map, this.hero.x, this.hero.y, goal.x, goal.y, blocked);
+    if (path?.length) {
+      return { type: memory.type, path, goal };
+    }
+    this.clearIntentMemory();
+    return action;
   }
 
   tryUseSpellScrolls() {
@@ -977,7 +1063,7 @@ export class Game {
       return;
     }
 
-    const action = getExplorationTarget(
+    let action = getExplorationTarget(
       this.map,
       this.hero,
       this.explored,
@@ -992,6 +1078,7 @@ export class Game {
       this.visible,
       this.minions
     );
+    action = this.applyIntentMemory(action);
 
     const prevPos = this.lastHeroPos;
     let moved = false;
@@ -1042,25 +1129,15 @@ export class Game {
       this.currentPath = [];
     }
 
-    const PATH_ACTIONS = new Set([
-      'room-loot',
-      'disarm-move',
-      'heal-move',
-      'merchant-move',
-      'chest-move',
-      'chase',
-      'move',
-      'explore',
-      'stairs',
-    ]);
-
-    if (PATH_ACTIONS.has(action.type)) {
+    if (Game.PATH_ACTIONS.has(action.type)) {
       this.currentPath = action.path?.length ? [...action.path] : [];
+      this.rememberIntent(action);
       if (action.type === 'chase' && action.goal?.x != null && action.goal?.alive !== false) {
         this.combatFocus = action.goal;
       }
     } else {
       this.currentPath = [];
+      this.clearIntentMemory();
     }
 
     if (this.combatFocus?.alive && action.type === 'wait') {
@@ -1568,6 +1645,7 @@ export class Game {
     this.lastHeroPos = null;
     this.stuckTicks = 0;
     this.recentPositions = [];
+    this.intentMemory = null;
     this.accumulator = 0;
     this.ui.clearLog();
     return true;
