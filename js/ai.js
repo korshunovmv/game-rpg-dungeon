@@ -586,12 +586,25 @@ export function getExplorationTarget(
   const { x: hx, y: hy } = hero;
   const attackRange = getAttackRange(hero);
   const itemRange = getItemSearchRange(hero);
-  const needHeal = hero.hp / hero.maxHp < 0.45;
+  const hpRatio = hero.hp / Math.max(1, hero.maxHp);
+  const needHeal = hpRatio < 0.45;
+  const panicMode = hpRatio < 0.35;
   const narrow = isNarrowPassage(map, hx, hy);
   const lootRange = narrow ? Math.min(itemRange, 5) : itemRange;
   const blocked = new Set(
     monsters.filter((m) => m.alive).map((m) => key(m.x, m.y))
   );
+  const knownMonsters = getKnownMonsters(monsters, explored, visible, hero);
+  const nearThreats = knownMonsters.filter((e) => e.dist <= 3);
+  const immediateThreat = nearThreats.some(
+    (e) => e.dist <= 1 || canMonsterAttackHero(map, e.monster, hero)
+  );
+  const dangerScore = nearThreats.reduce((sum, e) => {
+    const pressure = e.dist <= 1 ? 1.35 : e.dist <= 2 ? 0.85 : 0.45;
+    return sum + (e.monster.atk ?? 2) * pressure;
+  }, 0);
+  const highDanger = immediateThreat || (dangerScore >= 7 && hpRatio < 0.72);
+  const avoidGreed = highDanger || panicMode;
 
   const boss = getAliveBoss(monsters);
   if (boss && isMonsterKnown(boss, explored, visible, hero)) {
@@ -601,13 +614,41 @@ export function getExplorationTarget(
     }
   }
 
+  const onHealer = healers.find((h) => !h.used && h.x === hx && h.y === hy);
+  const onItem = items.find((i) => !i.collected && i.x === hx && i.y === hy);
+  if (panicMode && (immediateThreat || dangerScore >= 6)) {
+    if (onHealer && hero.hp < hero.maxHp) {
+      return { type: 'heal', target: onHealer };
+    }
+    if (onItem && isCollectibleWhileLowHp(onItem)) {
+      return { type: 'loot', target: onItem };
+    }
+
+    const healItems = items.filter((i) => !i.collected && isHealingItem(i));
+    const healPath = findNearestItemPath(map, hx, hy, healItems, blocked, hero, true);
+    if (healPath) {
+      return { type: 'room-loot', path: healPath.path, goal: healPath.goal };
+    }
+
+    const healerPath = findHealerPath(map, hx, hy, healers, blocked);
+    if (healerPath) {
+      return { type: 'heal-move', path: healerPath.path, goal: healerPath.goal };
+    }
+
+    const retreatFrom = knownMonsters[0]?.monster ?? null;
+    const retreatPath = findExplorationPath(map, hx, hy, explored, blocked, retreatFrom);
+    if (retreatPath?.path.length) {
+      return { type: 'explore', path: retreatPath.path, goal: retreatPath.goal };
+    }
+  }
+
   const targetMonster = monsters
     .filter((m) => m.alive && isMonsterKnown(m, explored, visible, hero)
       && canAttackTarget(map, hx, hy, m.x, m.y, attackRange))
     .map((m) => ({ monster: m, dist: getHeroFightDistance(hero, m) }))
     .sort((a, b) => a.dist - b.dist)[0];
 
-  if (targetMonster) {
+  if (targetMonster && !panicMode) {
     return {
       type: 'fight',
       target: targetMonster.monster,
@@ -637,7 +678,7 @@ export function getExplorationTarget(
     return guardianEngage;
   }
 
-  const nearestGuardian = getKnownMonsters(monsters, explored, visible, hero)[0]?.monster ?? null;
+  const nearestGuardian = knownMonsters[0]?.monster ?? null;
 
   if (canDisarmTraps(hero)) {
     const adjacentTrap = getDisarmableTrap(traps, hx, hy, 1);
@@ -659,19 +700,18 @@ export function getExplorationTarget(
     }
   }
 
-  const onHealer = healers.find((h) => !h.used && h.x === hx && h.y === hy);
   if (onHealer && hero.hp < hero.maxHp) {
     return { type: 'heal', target: onHealer };
   }
 
   const onChest = chests.find((c) => isUnopenedChest(c) && c.x === hx && c.y === hy);
-  if (onChest) {
+  if (onChest && !avoidGreed) {
     return { type: 'chest', target: onChest };
   }
 
-  const onItem = items.find((i) => !i.collected && i.x === hx && i.y === hy);
   if (onItem) {
-    if (!needHeal || isCollectibleWhileLowHp(onItem)) {
+    if ((!needHeal || isCollectibleWhileLowHp(onItem))
+      && (!avoidGreed || isCollectibleWhileLowHp(onItem))) {
       return { type: 'loot', target: onItem };
     }
   }
@@ -700,7 +740,7 @@ export function getExplorationTarget(
     }
   }
 
-  if (merchant && merchantHasStock(merchant)) {
+  if (!avoidGreed && merchant && merchantHasStock(merchant)) {
     if (merchant.x === hx && merchant.y === hy && hasWorthwhilePurchase(hero, merchant)) {
       return { type: 'shop', target: merchant };
     }
@@ -719,7 +759,7 @@ export function getExplorationTarget(
     .filter((e) => e.dist <= lootRange)
     .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];
 
-  if (nearChest) {
+  if (nearChest && !avoidGreed) {
     if (nearChest.dist === 0) {
       return { type: 'chest', target: nearChest.chest };
     }
@@ -732,9 +772,11 @@ export function getExplorationTarget(
   const currentRoom = getRoomAt(rooms, hx, hy);
   if (currentRoom) {
     const roomChests = getUnopenedChestsInRoom(currentRoom, chests);
-    const roomChest = findNearestChestPath(map, hx, hy, roomChests, blocked, hero);
-    if (roomChest?.path.length) {
-      return { type: 'chest-move', path: roomChest.path, goal: roomChest.goal };
+    if (!avoidGreed) {
+      const roomChest = findNearestChestPath(map, hx, hy, roomChests, blocked, hero);
+      if (roomChest?.path.length) {
+        return { type: 'chest-move', path: roomChest.path, goal: roomChest.goal };
+      }
     }
 
     const roomItems = getUncollectedItemsInRoom(currentRoom, items);
@@ -745,7 +787,7 @@ export function getExplorationTarget(
   }
 
   const nearItem = items
-    .filter((i) => !i.collected)
+    .filter((i) => !i.collected && (!avoidGreed || isCollectibleWhileLowHp(i)))
     .map((i) => ({ item: i, dist: manhattan(hx, hy, i.x, i.y), score: itemPriority(i, hero) }))
     .filter((e) => e.dist <= lootRange)
     .sort((a, b) => b.score - a.score || a.dist - b.dist)[0];

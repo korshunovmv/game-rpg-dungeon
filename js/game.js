@@ -676,11 +676,36 @@ export class Game {
       }
     }
 
-    this.tryUseSpellScrolls();
+    const hpRatio = this.hero.hp / Math.max(1, this.hero.maxHp);
+    const emergency = hpRatio < 0.4 || this.hero.poison > 0;
+
+    if (emergency) {
+      this.tryUseSpellScrolls();
+      if (this.hero.hp < this.hero.maxHp && getHealFlaskCount(this.hero) > 0) {
+        const result = useHealFlask(this.hero);
+        if (result?.healed > 0 || result?.cured) {
+          const cured = result.cured ? ', яд снят' : '';
+          this.log(`Флакон лечения: +${result.healed} HP${cured}`, 'info');
+          this.renderer.addParticle(this.hero.x, this.hero.y, '#44ff88', 20);
+        }
+      }
+      if (usesMana(this.hero) && getManaFlaskCount(this.hero) > 0) {
+        const manaRatioNow = this.hero.mana / this.hero.maxMana;
+        if (manaRatioNow < 0.25) {
+          const result = useManaFlask(this.hero);
+          if (result?.restored > 0) {
+            this.log(`Флакон маны: +${result.restored} MP`, 'info');
+            this.renderer.addParticle(this.hero.x, this.hero.y, '#4488ff', 20);
+          }
+        }
+      }
+    } else {
+      this.tryUseSpellScrolls();
+    }
 
     if (this.hero.hp < this.hero.maxHp && getHealFlaskCount(this.hero) > 0) {
-      const hpRatio = this.hero.hp / this.hero.maxHp;
-      if (hpRatio < 0.45 || this.hero.poison > 0) {
+      const currentHpRatio = this.hero.hp / this.hero.maxHp;
+      if (currentHpRatio < 0.45 || this.hero.poison > 0) {
         const result = useHealFlask(this.hero);
         if (result?.healed > 0 || result?.cured) {
           const cured = result.cured ? ', яд снят' : '';
@@ -764,6 +789,7 @@ export class Game {
     }
 
     if (this.hero.slowed > 0) {
+      this.tryUseConsumables();
       if (this.hero.hasteBonus > 0 && Math.random() < 0.65) {
         this.hero.slowed = Math.max(0, this.hero.slowed - 1);
       } else {
