@@ -1457,13 +1457,20 @@ export class Game {
     } else if (result.heroDmg > 0) {
       const rangeNote = result.ranged ? ' (дист.)' : '';
       const critNote = result.crit ? ' Крит!' : '';
-      const stanceNote = result.focusShot ? ' [Focus]' : result.meleePenalty ? ' [вплотную]' : '';
+      const tags = [];
+      if (result.focusShot) tags.push('Focus');
+      if (result.meleePenalty) tags.push('вплотную');
+      if (result.opportunist) tags.push('Opportunist');
+      const stanceNote = tags.length ? ` [${tags.join(', ')}]` : '';
       this.log(`${result.attackLabel}${rangeNote}${stanceNote} по ${monster.name}: −${result.heroDmg} HP${critNote}`, 'combat');
       this.updateBossPhase(monster);
     }
 
     if (result.drained > 0) {
       this.log(`Поглощено: +${result.drained} HP`, 'info');
+    }
+    if (result.manaRefund > 0) {
+      this.log(`Восстановлено маны: +${result.manaRefund} MP`, 'info');
     }
     if (result.hasted) {
       this.log('Ускорение: шанс уклонения повышен!', 'info');

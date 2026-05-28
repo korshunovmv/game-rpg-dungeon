@@ -121,8 +121,10 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
     ? chebyshev(hero.x, hero.y, monster.x, monster.y)
     : distance;
   const isArcher = hero.profession === 'archer';
+  const isThief = hero.profession === 'thief';
   const focusShot = isArcher && fightDist >= 2;
   const meleePenalty = isArcher && fightDist <= 1;
+  const opportunist = isThief && (monster.hp / Math.max(1, monster.maxHp)) <= 0.55;
   let heroDmg = 0;
   let crit = false;
 
@@ -139,6 +141,10 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
     } else if (meleePenalty) {
       heroDmg = Math.max(1, Math.floor(heroDmg * 0.8));
       critChance = Math.max(0.01, critChance - 0.03);
+    }
+    if (opportunist) {
+      heroDmg = Math.max(1, Math.floor(heroDmg * 1.12));
+      critChance += 0.05;
     }
 
     crit = rollLuck(hero, critChance);
@@ -161,6 +167,7 @@ export function combatRound(hero, monster, distance = 1, monsters = []) {
     crit,
     focusShot,
     meleePenalty,
+    opportunist,
   };
 }
 

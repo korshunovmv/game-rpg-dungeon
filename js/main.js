@@ -206,7 +206,13 @@ class UI {
       this.heroManaRow.style.display = 'none';
     }
     this.heroAtk.textContent = String(getTotalAtk(hero));
-    this.heroDef.textContent = String(getTotalDef(hero));
+    const totalDef = getTotalDef(hero);
+    if (hero.profession === 'warrior' && (hero.guardDefBonus ?? 0) > 0) {
+      const maxTurns = Math.max(0, ...((hero.guardBuffs ?? []).map((buff) => buff.turns ?? 0)));
+      this.heroDef.textContent = `${totalDef} (+${hero.guardDefBonus} guard, ${maxTurns}т)`;
+    } else {
+      this.heroDef.textContent = String(totalDef);
+    }
     this.heroLuck.textContent = String(getLuck(hero));
     this.heroStrength.textContent = String(hero.strength ?? 0);
     this.heroDexterity.textContent = String(hero.dexterity ?? 0);

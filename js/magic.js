@@ -271,6 +271,7 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
     prismWard: false,
     mirrorSkin: false,
     reflected: 0,
+    manaRefund: 0,
   };
 
   hero.magicShield = 0;
@@ -387,5 +388,13 @@ export function mageCombatRound(hero, monster, monsters, distance = 1) {
   }
 
   result.heroDead = hero.hp <= 0;
+  if (result.monsterDead && hero.maxMana) {
+    const refund = 1 + Math.floor((spell.manaCost ?? 0) * 0.35);
+    const restored = Math.min(refund, hero.maxMana - hero.mana);
+    if (restored > 0) {
+      hero.mana += restored;
+      result.manaRefund = restored;
+    }
+  }
   return result;
 }

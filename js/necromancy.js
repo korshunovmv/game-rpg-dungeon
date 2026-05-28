@@ -157,6 +157,7 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
     plagued: false,
     veiled: false,
     soulWarded: false,
+    manaRefund: 0,
   };
 
   hero.magicShield = 0;
@@ -256,6 +257,14 @@ export function necromancerCombatRound(hero, monster, monsters, distance = 1) {
   }
 
   result.heroDead = hero.hp <= 0;
+  if (result.monsterDead && hero.maxMana) {
+    const refundBase = spell.id === 'drain' || spell.id === 'curse' ? 3 : 2;
+    const restored = Math.min(refundBase, hero.maxMana - hero.mana);
+    if (restored > 0) {
+      hero.mana += restored;
+      result.manaRefund = restored;
+    }
+  }
   return result;
 }
 

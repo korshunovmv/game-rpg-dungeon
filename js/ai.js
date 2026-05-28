@@ -595,6 +595,44 @@ function chooseHumanLike(entries, scoreFn, options = {}) {
   return pool[0].entry;
 }
 
+function findArcherKiteAction(map, hero, knownMonsters, blocked) {
+  if (hero.profession !== 'archer') return null;
+  const nearest = knownMonsters[0]?.monster;
+  if (!nearest) return null;
+  const nearestDist = manhattan(hero.x, hero.y, nearest.x, nearest.y);
+  if (nearestDist > 1) return null;
+
+  let best = null;
+  for (const [dx, dy] of CARDINAL_DIRS) {
+    const nx = hero.x + dx;
+    const ny = hero.y + dy;
+    if (!canStep(map, hero.x, hero.y, nx, ny, blocked)) continue;
+
+    const nextNearest = knownMonsters.reduce((minDist, entry) => {
+      const dist = manhattan(nx, ny, entry.monster.x, entry.monster.y);
+      return Math.min(minDist, dist);
+    }, Infinity);
+    const distGain = nextNearest - nearestDist;
+    if (distGain < 1) continue;
+
+    const canStillShoot = canAttackTarget(
+      map,
+      nx,
+      ny,
+      nearest.x,
+      nearest.y,
+      getAttackRange(hero)
+    );
+    const score = distGain * 5 + (canStillShoot ? 3.5 : 0) + nextNearest * 0.2;
+    if (!best || score > best.score) {
+      best = { x: nx, y: ny, score };
+    }
+  }
+
+  if (!best) return null;
+  return { type: 'move', path: [{ x: best.x, y: best.y }], goal: { x: best.x, y: best.y } };
+}
+
 export function getExplorationTarget(
   map,
   hero,
@@ -680,6 +718,11 @@ export function getExplorationTarget(
     if (retreatPath?.path.length && Math.random() < 0.35) {
       return { type: 'explore', path: retreatPath.path, goal: retreatPath.goal };
     }
+  }
+
+  if (!panicMode && immediateThreat) {
+    const kiteAction = findArcherKiteAction(map, hero, knownMonsters, blocked);
+    if (kiteAction) return kiteAction;
   }
 
   const targetMonster = chooseHumanLike(monsters

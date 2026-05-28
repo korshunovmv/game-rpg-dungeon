@@ -74,6 +74,38 @@ export const CLASS_STARTER_SKILL = {
 
 const MAX_SKILL_LEVEL = 10;
 
+const CLASS_SKILL_WEIGHTS = {
+  warrior: {
+    toughness: 3.2,
+    vitality: 2.4,
+    strength: 2.1,
+    precision: 1.15,
+  },
+  archer: {
+    precision: 3.1,
+    vision: 2.6,
+    strength: 1.6,
+    fortune: 1.5,
+  },
+  thief: {
+    fortune: 2.9,
+    greed: 2.6,
+    vision: 1.8,
+    vitality: 1.35,
+  },
+  mage: {
+    arcane: 3.4,
+    vitality: 1.6,
+    regeneration: 1.45,
+  },
+  necromancer: {
+    necromancy: 3.25,
+    arcane: 2.3,
+    vitality: 1.65,
+    regeneration: 1.35,
+  },
+};
+
 export function initHeroSkills(hero) {
   hero.skills = hero.skills ?? {};
   const starter = CLASS_STARTER_SKILL[hero.profession];
@@ -123,7 +155,19 @@ function pickSkillToGrow(hero) {
     (id) => hero.skills[id] > 0 && hero.skills[id] < MAX_SKILL_LEVEL
   );
   if (growable.length) {
-    return growable[Math.floor(Math.random() * growable.length)];
+    const classWeights = CLASS_SKILL_WEIGHTS[hero.profession] ?? {};
+    const weighted = growable.map((id) => {
+      const lv = hero.skills[id] ?? 0;
+      const weight = (classWeights[id] ?? 1) * (1 + (MAX_SKILL_LEVEL - lv) * 0.05);
+      return { id, weight: Math.max(0.1, weight) };
+    });
+    const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * total;
+    for (const entry of weighted) {
+      roll -= entry.weight;
+      if (roll <= 0) return entry.id;
+    }
+    return weighted[0].id;
   }
 
   const pool = Object.keys(SKILL_DEFS).filter((id) => isSkillAvailable(hero, id));
