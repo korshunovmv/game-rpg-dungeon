@@ -23,6 +23,7 @@ body {
   font-family: 'Press Start 2P', monospace;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: hidden;
   image-rendering: pixelated;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
@@ -136,6 +137,8 @@ body {
 
 .gender-select {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
   margin-bottom: 6px;
 }
@@ -144,6 +147,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: 36px;
   font-size: 6px;
   color: var(--text);
   background: #1f1f36;
@@ -297,6 +301,7 @@ body {
   line-height: 1.8;
   max-height: 90px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .skills-list li {
@@ -316,6 +321,7 @@ body {
   line-height: 1.8;
   max-height: 72px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .legends-list li {
@@ -385,6 +391,7 @@ body {
   line-height: 1.8;
   overflow-y: auto;
   flex: 1;
+  overscroll-behavior: contain;
 }
 
 #log li {
@@ -479,6 +486,8 @@ body {
     bottom: max(8px, env(safe-area-inset-bottom));
     z-index: 5;
     padding-top: 4px;
+    background: linear-gradient(to top, rgba(15, 15, 26, 0.95), rgba(15, 15, 26, 0.72));
+    border-top: 1px solid #2a2a46;
   }
 
   .controls .btn {
@@ -577,6 +586,7 @@ body {
 
   .controls .btn {
     font-size: 5px;
+    min-height: 46px;
   }
 }
 
@@ -591,6 +601,16 @@ body {
 
   .controls {
     grid-template-columns: 1fr;
+  }
+
+  .class-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .class-card:last-child:nth-child(odd) {
+    grid-column: auto;
+    max-width: none;
+    justify-self: stretch;
   }
 
   .controls .btn {
