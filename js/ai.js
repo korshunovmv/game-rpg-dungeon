@@ -607,7 +607,7 @@ export function getExplorationTarget(
   const avoidGreed = highDanger || panicMode;
 
   const boss = getAliveBoss(monsters);
-  if (boss && isMonsterKnown(boss, explored, visible, hero)) {
+  if (!panicMode && boss && isMonsterKnown(boss, explored, visible, hero)) {
     const bossDist = manhattan(hx, hy, boss.x, boss.y);
     if (canAttackTarget(map, hx, hy, boss.x, boss.y, attackRange)) {
       return { type: 'fight', target: boss, distance: bossDist };

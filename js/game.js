@@ -799,6 +799,8 @@ export class Game {
 
   tryUseConsumables() {
     if (!this.hero || this.hero.hp <= 0) return;
+    let usedHealFlask = false;
+    let usedManaFlask = false;
 
     if (this.hero.scrollBarrierTurns > 0) {
       this.hero.scrollBarrierTurns -= 1;
@@ -816,6 +818,7 @@ export class Game {
       if (this.hero.hp < this.hero.maxHp && getHealFlaskCount(this.hero) > 0) {
         const result = useHealFlask(this.hero);
         if (result?.healed > 0 || result?.cured) {
+          usedHealFlask = true;
           const cured = result.cured ? ', яд снят' : '';
           this.log(`Флакон лечения: +${result.healed} HP${cured}`, 'info');
           this.renderer.addParticle(this.hero.x, this.hero.y, '#44ff88', 20);
@@ -826,6 +829,7 @@ export class Game {
         if (manaRatioNow < 0.25) {
           const result = useManaFlask(this.hero);
           if (result?.restored > 0) {
+            usedManaFlask = true;
             this.log(`Флакон маны: +${result.restored} MP`, 'info');
             this.renderer.addParticle(this.hero.x, this.hero.y, '#4488ff', 20);
           }
@@ -835,7 +839,7 @@ export class Game {
       this.tryUseSpellScrolls();
     }
 
-    if (this.hero.hp < this.hero.maxHp && getHealFlaskCount(this.hero) > 0) {
+    if (!usedHealFlask && this.hero.hp < this.hero.maxHp && getHealFlaskCount(this.hero) > 0) {
       const currentHpRatio = this.hero.hp / this.hero.maxHp;
       if (currentHpRatio < 0.45 || this.hero.poison > 0) {
         const result = useHealFlask(this.hero);
@@ -847,7 +851,7 @@ export class Game {
       }
     }
 
-    if (usesMana(this.hero) && getManaFlaskCount(this.hero) > 0) {
+    if (!usedManaFlask && usesMana(this.hero) && getManaFlaskCount(this.hero) > 0) {
       const manaRatio = this.hero.mana / this.hero.maxMana;
       if (manaRatio < 0.35) {
         const result = useManaFlask(this.hero);
@@ -920,18 +924,18 @@ export class Game {
       return;
     }
 
+    let heroCanAct = true;
+    this.tryUseConsumables();
     if (this.hero.slowed > 0) {
-      this.tryUseConsumables();
       if (this.hero.hasteBonus > 0 && Math.random() < 0.65) {
         this.hero.slowed = Math.max(0, this.hero.slowed - 1);
       } else {
         this.hero.slowed -= 1;
         this.log('Заклинивание... пропуск хода', 'trap');
-        return;
+        heroCanAct = false;
       }
     }
 
-    this.tryUseConsumables();
     this.syncStats();
 
     const hunterAttack = moveMonstersTowardHero(this.map, this.hero, this.monsters);
@@ -966,6 +970,11 @@ export class Game {
 
     if (this.combatFocus && !this.combatFocus.alive) {
       this.combatFocus = null;
+    }
+
+    if (!heroCanAct) {
+      this.trackHeroMovement(this.lastHeroPos, false);
+      return;
     }
 
     const action = getExplorationTarget(
@@ -1221,7 +1230,6 @@ export class Game {
       const absorbed = Math.min(this.hero.scrollBarrier, result.monsterDmg);
       result.monsterDmg -= absorbed;
       this.hero.scrollBarrier -= absorbed;
-      this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + absorbed);
       if (absorbed > 0) {
         this.log(`Печать поглощает ${absorbed} урона`, 'info');
       }
