@@ -4,6 +4,7 @@ import { Renderer } from './renderer.js';
 import { Game } from './game.js';
 import { drawClassPreview } from './sprites.js';
 import { getTotalAtk, getTotalDef } from './items.js';
+import { getTotalSpellScrolls } from './items.js';
 import { getLuck } from './luck.js';
 import { usesMana } from './classes.js';
 import { describeLegacyGift } from './legacy.js';
@@ -31,6 +32,7 @@ class UI {
     this.heroIntelligence = document.getElementById('hero-intelligence');
     this.heroPerception = document.getElementById('hero-perception');
     this.heroEndurance = document.getElementById('hero-endurance');
+    this.heroScrolls = document.getElementById('hero-scrolls');
     this.heroWeapon = document.getElementById('hero-weapon');
     this.heroArmor = document.getElementById('hero-armor');
     this.heroMinions = document.getElementById('hero-minions');
@@ -96,6 +98,7 @@ class UI {
     this.heroIntelligence.textContent = String(hero.intelligence ?? 0);
     this.heroPerception.textContent = String(hero.perception ?? 0);
     this.heroEndurance.textContent = String(hero.endurance ?? 0);
+    this.heroScrolls.textContent = String(getTotalSpellScrolls(hero));
     this.setEquipLabel(this.heroWeapon, hero.weapon);
     this.setEquipLabel(this.heroArmor, hero.armor);
     if (hero.profession === 'necromancer') {

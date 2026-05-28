@@ -61,6 +61,7 @@ export function createHero(spawn, professionId = 'warrior', gender = 'male') {
     magicShield: 0,
     healFlasks: [],
     manaFlasks: [],
+    scrolls: {},
     alive: true,
     facing: 'down',
     animFrame: 0,

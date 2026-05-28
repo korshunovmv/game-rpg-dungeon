@@ -1,4 +1,4 @@
-import { getHealFlaskCount, getManaFlaskCount } from './items.js';
+import { getHealFlaskCount, getManaFlaskCount, getTotalSpellScrolls } from './items.js';
 import { COLORS, TILE, MAP_W, MAP_H, TILES } from './config.js';
 import { key } from './utils.js';
 import {
@@ -425,6 +425,25 @@ export class Renderer {
       ctx.fillRect(sx + 6, sy + 8 + bob, 1, 3);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(sx + 8, sy + 6 + bob, 1, 1);
+      return;
+    }
+
+    if (item.type.startsWith('scroll_')) {
+      const color = item.color ?? '#dcb8ff';
+      ctx.fillStyle = '#0d0d16';
+      ctx.fillRect(sx + 4, sy + 13 + bob, 8, 1);
+      ctx.fillStyle = '#d9c59a';
+      ctx.fillRect(sx + 4, sy + 5 + bob, 8, 7);
+      ctx.fillStyle = '#b79e72';
+      ctx.fillRect(sx + 4, sy + 5 + bob, 1, 7);
+      ctx.fillRect(sx + 11, sy + 5 + bob, 1, 7);
+      ctx.fillStyle = '#9c8257';
+      ctx.fillRect(sx + 5, sy + 4 + bob, 6, 1);
+      ctx.fillRect(sx + 5, sy + 12 + bob, 6, 1);
+      ctx.fillStyle = color;
+      ctx.fillRect(sx + 6, sy + 7 + bob, 4, 3);
+      ctx.fillStyle = '#fff3d7';
+      ctx.fillRect(sx + 7, sy + 8 + bob, 1, 1);
       return;
     }
 
@@ -911,6 +930,7 @@ export class Renderer {
     const ctx = this.ctx;
     const healCount = getHealFlaskCount(hero);
     const manaCount = getManaFlaskCount(hero);
+    const scrollCount = getTotalSpellScrolls(hero);
     const panelW = 112;
 
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
@@ -927,6 +947,16 @@ export class Renderer {
     this.drawFlaskIcon(x + 58, y + 4, '#4488ff', '#aaccff');
     ctx.fillStyle = '#66aaff';
     ctx.fillText(String(manaCount), x + 66, y + 11);
+
+    ctx.fillStyle = '#d9c59a';
+    ctx.fillRect(x + 86, y + 5, 7, 6);
+    ctx.fillStyle = '#b79e72';
+    ctx.fillRect(x + 86, y + 5, 1, 6);
+    ctx.fillRect(x + 92, y + 5, 1, 6);
+    ctx.fillStyle = '#b18cff';
+    ctx.fillRect(x + 88, y + 7, 3, 2);
+    ctx.fillStyle = '#dcb8ff';
+    ctx.fillText(String(scrollCount), x + 98, y + 11);
   }
 
   drawFloorLabel(theme, floor) {

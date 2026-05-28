@@ -113,6 +113,48 @@ export const ELIXIRS = {
   },
 };
 
+export const SCROLLS = {
+  scroll_healing: {
+    id: 'scroll_healing',
+    name: 'Свиток исцеления',
+    effect: 'heal',
+    heal: 42,
+    color: '#7dff9f',
+  },
+  scroll_mana: {
+    id: 'scroll_mana',
+    name: 'Свиток восстановления маны',
+    effect: 'mana',
+    restore: 26,
+    color: '#7db4ff',
+  },
+  scroll_fireburst: {
+    id: 'scroll_fireburst',
+    name: 'Свиток огненного взрыва',
+    effect: 'fireburst',
+    damage: 18,
+    radius: 2,
+    color: '#ff8a54',
+  },
+  scroll_frostnova: {
+    id: 'scroll_frostnova',
+    name: 'Свиток ледяной волны',
+    effect: 'frostnova',
+    damage: 12,
+    radius: 2,
+    slow: 2,
+    color: '#8be8ff',
+  },
+  scroll_barrier: {
+    id: 'scroll_barrier',
+    name: 'Свиток защитной печати',
+    effect: 'barrier',
+    shield: 24,
+    turns: 3,
+    color: '#b8b7ff',
+  },
+};
+
 export const WEAPONS = [
   { id: 'dagger', name: 'Кинжал', atk: 1, color: '#aaaaaa' },
   { id: 'sword', name: 'Меч', atk: 2, color: '#cccccc' },
@@ -138,6 +180,7 @@ const LOOT_TABLE = [
   { type: 'mana_potion', weight: 8 },
   { type: 'mana_potion_large', weight: 4 },
   { type: 'elixir', weight: 8 },
+  { type: 'scroll', weight: 7 },
   { type: 'weapon', weight: 18 },
   { type: 'armor', weight: 16 },
 ];
@@ -182,6 +225,11 @@ function pickElixir(floor) {
     scaled.goldPct = Math.min(1.2, base.goldPct + floor * 0.008);
   }
   return scaled;
+}
+
+function pickScroll() {
+  const list = Object.values(SCROLLS);
+  return list[randInt(0, list.length - 1)];
 }
 
 export function createLootItem(pos, floor, index, luck = 5) {
@@ -245,6 +293,27 @@ export function createLootItem(pos, floor, index, luck = 5) {
       haste: elixir.haste,
       turns: elixir.turns,
       color: elixir.color,
+      collected: false,
+    };
+  }
+
+  if (kind === 'scroll') {
+    const scroll = pickScroll();
+    return {
+      id: `i-${index}-${Date.now()}`,
+      x: pos.x,
+      y: pos.y,
+      type: scroll.id,
+      name: scroll.name,
+      effect: scroll.effect,
+      heal: scroll.heal,
+      restore: scroll.restore,
+      damage: scroll.damage,
+      radius: scroll.radius,
+      slow: scroll.slow,
+      shield: scroll.shield,
+      turns: scroll.turns,
+      color: scroll.color,
       collected: false,
     };
   }
@@ -457,6 +526,34 @@ export function getManaFlaskCount(hero) {
   return hero.manaFlasks?.length ?? 0;
 }
 
+function ensureScrollInventory(hero) {
+  if (!hero.scrolls || typeof hero.scrolls !== 'object') {
+    hero.scrolls = {};
+  }
+}
+
+export function addSpellScroll(hero, scrollId, amount = 1) {
+  ensureScrollInventory(hero);
+  hero.scrolls[scrollId] = (hero.scrolls[scrollId] ?? 0) + amount;
+  return hero.scrolls[scrollId];
+}
+
+export function getSpellScrollCount(hero, scrollId) {
+  return hero?.scrolls?.[scrollId] ?? 0;
+}
+
+export function getTotalSpellScrolls(hero) {
+  if (!hero?.scrolls) return 0;
+  return Object.values(hero.scrolls).reduce((sum, count) => sum + count, 0);
+}
+
+export function consumeSpellScroll(hero, scrollId) {
+  const count = getSpellScrollCount(hero, scrollId);
+  if (count <= 0) return 0;
+  hero.scrolls[scrollId] = count - 1;
+  return hero.scrolls[scrollId];
+}
+
 export function useHealFlask(hero) {
   if (!hero.healFlasks?.length) return null;
 
@@ -538,6 +635,17 @@ export function purchaseFromMerchant(hero, item) {
       turns: item.turns,
       total: item.stat ? hero[item.stat] : null,
       buffId: buff.id,
+      price: item.price,
+    };
+  }
+
+  if (item.type.startsWith('scroll_')) {
+    const count = addSpellScroll(hero, item.type, 1);
+    return {
+      type: 'scroll',
+      name: item.name,
+      count,
+      scrollId: item.type,
       price: item.price,
     };
   }
@@ -626,6 +734,16 @@ export function collectItem(hero, item) {
       turns: item.turns,
       total: item.stat ? hero[item.stat] : null,
       buffId: buff.id,
+    };
+  }
+
+  if (item.type.startsWith('scroll_')) {
+    const count = addSpellScroll(hero, item.type, 1);
+    return {
+      type: 'scroll',
+      name: item.name,
+      count,
+      scrollId: item.type,
     };
   }
 
@@ -755,6 +873,10 @@ export function isElixirItem(item) {
   return item.type.startsWith('elixir_');
 }
 
+export function isScrollItem(item) {
+  return item.type.startsWith('scroll_');
+}
+
 export function itemPriority(item, hero) {
   if (item.type === 'grave') return 1000;
   if (isManaItem(item) && hero.maxMana) {
@@ -792,6 +914,15 @@ export function itemPriority(item, hero) {
     if (item.stat === 'dexterity') return 10;
     if (item.stat === 'perception') return 9;
     return 8;
+  }
+  if (isScrollItem(item)) {
+    const hpRatio = hero.hp / Math.max(1, hero.maxHp);
+    if (item.effect === 'heal') return hpRatio < 0.55 ? 19 : 11;
+    if (item.effect === 'mana') return hero.maxMana ? 12 : 3;
+    if (item.effect === 'barrier') return hpRatio < 0.65 ? 17 : 10;
+    if (item.effect === 'fireburst') return 14;
+    if (item.effect === 'frostnova') return 13;
+    return 9;
   }
   return 5;
 }

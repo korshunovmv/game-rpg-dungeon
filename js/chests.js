@@ -1,6 +1,6 @@
 import { randInt, shuffle, manhattan } from './utils.js';
 import { isWalkable } from './dungeon.js';
-import { WEAPONS, ARMORS, POTIONS, ELIXIRS, collectItem } from './items.js';
+import { WEAPONS, ARMORS, POTIONS, ELIXIRS, SCROLLS, collectItem } from './items.js';
 import { canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 import { buildWeapon, buildArmor, rarityPriorityBonus } from './rarity.js';
 
@@ -39,6 +39,25 @@ function createRareChestLoot(floor, luck = 5) {
       amount: elixir.amount + Math.floor(floor / 7),
       turns: elixir.turns + floor * 2,
       color: elixir.color,
+      rare: true,
+    };
+  }
+
+  if (roll < 0.68) {
+    const list = Object.values(SCROLLS);
+    const scroll = list[randInt(0, list.length - 1)];
+    return {
+      type: scroll.id,
+      name: scroll.name,
+      effect: scroll.effect,
+      heal: scroll.heal,
+      restore: scroll.restore,
+      damage: scroll.damage,
+      radius: scroll.radius,
+      slow: scroll.slow,
+      shield: scroll.shield,
+      turns: scroll.turns,
+      color: scroll.color,
       rare: true,
     };
   }
@@ -96,6 +115,9 @@ export function describeChestLoot(loot) {
     if (loot.effectLabel === 'бонус золота') {
       return `${loot.name} (+${Math.round((loot.goldPct ?? 0) * 100)}% золота)`;
     }
+    return loot.name;
+  }
+  if (loot.type.startsWith('scroll_')) {
     return loot.name;
   }
   if (loot.type === 'weapon') return `${loot.name} (+${loot.atk} ATK)`;
@@ -198,6 +220,14 @@ export function chestPriority(chest, hero) {
     if (loot.effect === 'gold_bonus') return 875;
     if (loot.effect === 'haste') return 880;
     return 875 + loot.amount * 2;
+  }
+  if (loot.type.startsWith('scroll_')) {
+    if (loot.effect === 'heal') return 892;
+    if (loot.effect === 'barrier') return 889;
+    if (loot.effect === 'fireburst') return 886;
+    if (loot.effect === 'frostnova') return 884;
+    if (loot.effect === 'mana') return 872;
+    return 875;
   }
   return 860;
 }

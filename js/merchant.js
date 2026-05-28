@@ -1,5 +1,5 @@
 import { randInt, shuffle } from './utils.js';
-import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS, ELIXIRS } from './items.js';
+import { POTIONS, WEAPONS, ARMORS, MANA_POTIONS, ELIXIRS, SCROLLS } from './items.js';
 import { luckMerchantChance } from './luck.js';
 import { canHeroEquipWeapon, canHeroEquipArmor } from './classes.js';
 import { buildWeapon, buildArmor, getRarityDef, getItemRarity } from './rarity.js';
@@ -77,6 +77,25 @@ export function generateMerchantStock(floor) {
     turns: elixir.turns + floor * 2,
     color: elixir.color,
     price: 14 + Math.floor(floor * 4),
+    sold: false,
+  });
+
+  const scrollList = Object.values(SCROLLS);
+  const scroll = scrollList[randInt(0, scrollList.length - 1)];
+  stock.push({
+    id: `s-sc-${Date.now()}`,
+    type: scroll.id,
+    name: scroll.name,
+    effect: scroll.effect,
+    heal: scroll.heal,
+    restore: scroll.restore,
+    damage: scroll.damage,
+    radius: scroll.radius,
+    slow: scroll.slow,
+    shield: scroll.shield,
+    turns: scroll.turns,
+    color: scroll.color,
+    price: 15 + Math.floor(floor * 4),
     sold: false,
   });
 
@@ -205,6 +224,14 @@ export function shopItemScore(item, hero) {
     if (item.stat === 'dexterity') return 1.1;
     if (item.stat === 'perception') return 1.0;
     return 0.8;
+  }
+  if (item.type.startsWith('scroll_')) {
+    if (item.effect === 'heal') return hero.hp / hero.maxHp < 0.65 ? 1.95 : 1.05;
+    if (item.effect === 'barrier') return hero.hp / hero.maxHp < 0.7 ? 1.8 : 1.0;
+    if (item.effect === 'fireburst') return 1.3;
+    if (item.effect === 'frostnova') return 1.2;
+    if (item.effect === 'mana') return hero.maxMana ? 1.25 : 0.15;
+    return 0.9;
   }
 
   if (item.type === 'weapon') {

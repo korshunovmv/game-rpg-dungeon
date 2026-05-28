@@ -2,11 +2,12 @@ import { TILES } from './config.js';
 import { generateDungeon, spawnEntities, isWalkable } from './dungeon.js';
 import { createHero, combatRound, collectItem, gainXp, updateFacing } from './hero.js';
 import { getExplorationTarget, getVisibleTiles, wanderStep, moveMonstersTowardHero, wanderIdleMonsters, canAttackTarget, canMonsterAttackHero, getHeroFightDistance, getMonsterFightDistance, canStep, findUnstickStep, getHeroBlockedSet } from './ai.js';
-import { key, isMeleeAdjacent } from './utils.js';
+import { key, isMeleeAdjacent, chebyshev, manhattan } from './utils.js';
 import { GAME_SPEED } from './config.js';
 import { getProfession, getAttackRange, canDisarmTraps } from './classes.js';
 import { getTrapAt, triggerTrap, tickPoison, disarmTrap, revealTrapsForThief } from './traps.js';
 import { useHealer, purchaseFromMerchant, useHealFlask, useManaFlask, getHealFlaskCount, getManaFlaskCount, tickHeroBuffs } from './items.js';
+import { getSpellScrollCount, consumeSpellScroll } from './items.js';
 import { formatRarityLabel } from './rarity.js';
 import { usesMana } from './classes.js';
 import { pickBestPurchase, merchantHasStock, hasWorthwhilePurchase } from './merchant.js';
@@ -315,6 +316,9 @@ export class Game {
     } else if (result.type === 'mana_flask') {
       this.log(`${result.name} → флаконы маны: ${result.count}`, 'loot');
       this.renderer.addParticle(x, y, '#4488ff', 25);
+    } else if (result.type === 'scroll') {
+      this.log(`${result.name} → свитки: ${result.count}`, 'loot');
+      this.renderer.addParticle(x, y, '#dcb8ff', 28);
     } else if (result.type === 'elixir') {
       if (result.statLabel && result.amount != null) {
         this.log(`${result.name}: +${result.amount} ${result.statLabel} на ${result.turns} ход.`, 'loot');
@@ -434,6 +438,9 @@ export class Game {
         'shop'
       );
       this.renderer.addParticle(this.hero.x, this.hero.y, '#888899', 20);
+    } else if (result.type === 'scroll') {
+      this.log(`${seller}: ${result.name} за ${result.price} зол. (свитки: ${result.count})`, 'shop');
+      this.renderer.addParticle(this.hero.x, this.hero.y, '#dcb8ff', 24);
     }
     this.syncStats();
   }
@@ -564,8 +571,112 @@ export class Game {
     };
   }
 
+  getNearbyMonsters(radius = 2) {
+    return this.monsters.filter(
+      (m) => m.alive && chebyshev(this.hero.x, this.hero.y, m.x, m.y) <= radius
+    );
+  }
+
+  getNearestKnownMonster() {
+    if (!this.monsters?.length) return null;
+    return this.monsters
+      .filter((m) => m.alive && this.visible.has(key(m.x, m.y)))
+      .map((m) => ({ monster: m, dist: manhattan(this.hero.x, this.hero.y, m.x, m.y) }))
+      .sort((a, b) => a.dist - b.dist)[0]?.monster ?? null;
+  }
+
+  tryUseSpellScrolls() {
+    if (!this.hero || this.hero.hp <= 0) return false;
+
+    const hpRatio = this.hero.hp / Math.max(1, this.hero.maxHp);
+    const manaRatio = this.hero.maxMana ? this.hero.mana / Math.max(1, this.hero.maxMana) : 1;
+    const nearMonsters = this.getNearbyMonsters(2);
+    const veryNearMonsters = this.getNearbyMonsters(1);
+    const nearest = this.getNearestKnownMonster();
+
+    if (hpRatio < 0.36 && getSpellScrollCount(this.hero, 'scroll_healing') > 0) {
+      consumeSpellScroll(this.hero, 'scroll_healing');
+      const base = 28 + Math.floor(this.hero.level * 2.5);
+      const healed = Math.min(base, this.hero.maxHp - this.hero.hp);
+      if (healed > 0) {
+        this.hero.hp += healed;
+        this.log(`Свиток исцеления: +${healed} HP`, 'info');
+        this.renderer.addParticle(this.hero.x, this.hero.y, '#7dff9f', 28);
+        return true;
+      }
+    }
+
+    if (this.hero.maxMana && manaRatio < 0.28 && getSpellScrollCount(this.hero, 'scroll_mana') > 0) {
+      consumeSpellScroll(this.hero, 'scroll_mana');
+      const restored = Math.min(20 + this.hero.level * 2, this.hero.maxMana - this.hero.mana);
+      if (restored > 0) {
+        this.hero.mana += restored;
+        this.log(`Свиток восстановления маны: +${restored} MP`, 'info');
+        this.renderer.addParticle(this.hero.x, this.hero.y, '#7db4ff', 26);
+        return true;
+      }
+    }
+
+    if (veryNearMonsters.length >= 2 && getSpellScrollCount(this.hero, 'scroll_barrier') > 0) {
+      consumeSpellScroll(this.hero, 'scroll_barrier');
+      this.hero.scrollBarrier = Math.max(this.hero.scrollBarrier ?? 0, 22 + this.hero.level * 2);
+      this.hero.scrollBarrierTurns = Math.max(this.hero.scrollBarrierTurns ?? 0, 3);
+      this.log('Свиток защитной печати: поглощающий барьер активирован', 'info');
+      this.renderer.addParticle(this.hero.x, this.hero.y, '#b8b7ff', 28);
+      return true;
+    }
+
+    if (nearMonsters.length >= 2 && getSpellScrollCount(this.hero, 'scroll_frostnova') > 0) {
+      consumeSpellScroll(this.hero, 'scroll_frostnova');
+      let hits = 0;
+      for (const monster of nearMonsters) {
+        const dmg = 9 + this.hero.level + Math.floor(Math.random() * 5);
+        monster.hp -= dmg;
+        monster.slowed = Math.max(monster.slowed ?? 0, 2);
+        this.renderer.addParticle(monster.x, monster.y, '#8be8ff', 18);
+        hits += 1;
+      }
+      this.log(`Свиток ледяной волны: задеты цели (${hits})`, 'combat');
+      return true;
+    }
+
+    if (nearest && getSpellScrollCount(this.hero, 'scroll_fireburst') > 0) {
+      const monsterDist = manhattan(this.hero.x, this.hero.y, nearest.x, nearest.y);
+      if (monsterDist <= 4 && (nearMonsters.length >= 1 || nearest.hp > nearest.maxHp * 0.55)) {
+        consumeSpellScroll(this.hero, 'scroll_fireburst');
+        const targets = this.monsters.filter(
+          (m) => m.alive && manhattan(nearest.x, nearest.y, m.x, m.y) <= 1
+        );
+        for (const monster of targets) {
+          const dmg = 13 + this.hero.level + Math.floor(Math.random() * 7);
+          monster.hp -= dmg;
+          this.renderer.addParticle(monster.x, monster.y, '#ff8a54', 20);
+        }
+        this.renderer.addProjectile(this.hero.x, this.hero.y, nearest.x, nearest.y, {
+          kind: 'meteor',
+          color: '#ff8a54',
+          speed: 0.2,
+        });
+        this.log(`Свиток огненного взрыва: поражено целей ${targets.length}`, 'combat');
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   tryUseConsumables() {
     if (!this.hero || this.hero.hp <= 0) return;
+
+    if (this.hero.scrollBarrierTurns > 0) {
+      this.hero.scrollBarrierTurns -= 1;
+      if (this.hero.scrollBarrierTurns <= 0) {
+        this.hero.scrollBarrier = 0;
+        this.log('Защитная печать рассеялась', 'info');
+      }
+    }
+
+    this.tryUseSpellScrolls();
 
     if (this.hero.hp < this.hero.maxHp && getHealFlaskCount(this.hero) > 0) {
       const hpRatio = this.hero.hp / this.hero.maxHp;
@@ -947,6 +1058,20 @@ export class Game {
     const result = heroCanAttack
       ? combatRound(this.hero, monster, fightDist, this.monsters)
       : monsterSnipeRound(this.hero, monster);
+
+    if (result.monsterDmg > 0 && (this.hero.scrollBarrier ?? 0) > 0) {
+      const absorbed = Math.min(this.hero.scrollBarrier, result.monsterDmg);
+      result.monsterDmg -= absorbed;
+      this.hero.scrollBarrier -= absorbed;
+      this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + absorbed);
+      if (absorbed > 0) {
+        this.log(`Печать поглощает ${absorbed} урона`, 'info');
+      }
+      if (this.hero.scrollBarrier <= 0) {
+        this.hero.scrollBarrierTurns = 0;
+        this.log('Защитная печать разрушена', 'info');
+      }
+    }
 
     this.lastCombatMonster = monster;
     trackCombatRound(monster, this.hero, result.monsterDmg ?? 0);
